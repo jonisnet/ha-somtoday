@@ -7,7 +7,7 @@
 > support it being used this way. The integration works today, but Topicus can
 > change or block it without warning — a version that works this morning can
 > break this afternoon with nothing changed on your side. Versions stay in the
-> `0.0.x` range while that risk is live; see [CHANGELOG.md](CHANGELOG.md).
+> `0.x.x` range while that risk is live; see [CHANGELOG.md](CHANGELOG.md).
 
 Brings a student's Somtoday timetable, homework and tests into Home Assistant.
 Somtoday itself stays read-only. Optional personal appointments are stored only
