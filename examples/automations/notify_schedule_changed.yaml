@@ -96,12 +96,16 @@ actions:
                 {%- set kop = labels.get(c.type, c.type) ~ ': ' ~ (c.subject or 'les')
                       ~ ' (' ~ dagen[nu.weekday()] ~ ' ' ~ nu.day ~ ' ' ~ maanden[nu.month - 1] ~ ')' -%}
                 {%- set ns.lines = ns.lines + [kop] -%}
-                {%- if c.previous -%}
-                  {%- set was = c.previous.start | as_datetime | as_local -%}
-                  {%- set was_eind = c.previous.end | as_datetime | as_local -%}
+                {#- c.get('previous'), not c.previous: an `added` change has no
+                    previous version, and attribute access on a missing key logs
+                    a template error for every change on every device. -#}
+                {%- set vorig = c.get('previous') -%}
+                {%- if vorig -%}
+                  {%- set was = vorig.start | as_datetime | as_local -%}
+                  {%- set was_eind = vorig.end | as_datetime | as_local -%}
                   {%- set ns.lines = ns.lines + ['  was: ' ~ was.strftime('%H:%M') ~ '-' ~ was_eind.strftime('%H:%M')
-                        ~ (' · ' ~ c.previous.location if c.previous.location else '')
-                        ~ (' · ' ~ c.previous.teacher if c.previous.teacher else '')] -%}
+                        ~ (' · ' ~ vorig.location if vorig.location else '')
+                        ~ (' · ' ~ vorig.teacher if vorig.teacher else '')] -%}
                 {%- elif c.type == 'removed' -%}
                   {%- set ns.lines = ns.lines + ['  was: ' ~ nu.strftime('%H:%M') ~ '-' ~ eind.strftime('%H:%M')
                         ~ (' · ' ~ c.location if c.location else '')

@@ -83,7 +83,7 @@ def diff_lessons(
 ) -> list[LessonChange]:
     """Return what changed, ignoring everything the user cannot act on.
 
-    Two filters keep this from crying wolf, and both are load-bearing:
+    Three filters keep this from crying wolf, and all three are load-bearing:
 
     * **Only lessons that have not started yet.** A lesson that already happened
       cannot usefully change, and the fetch window's trailing edge drops old
@@ -92,9 +92,18 @@ def diff_lessons(
       window. The window moves forward roughly a day per poll, so without this
       every newly revealed day at the far end would be reported as a timetable
       full of "added" lessons, every single day.
+    * **Only lessons added to a day that already had some.** A day we held
+      nothing for is the school publishing that week, not a change to it —
+      schools tend to release the timetable a fortnight ahead, and announcing
+      "8 new lessons" every time a week is published is noise that teaches
+      people to ignore the notification. A genuinely inserted extra lesson
+      lands on a day that already has lessons, and is still reported.
     """
     changes: list[LessonChange] = []
     current_by_id = snapshot(current)
+    # Days we already knew something about. An unseen day is publication, not
+    # a change; a known day gaining a lesson is a real insertion.
+    known_days = {lesson.start.date() for lesson in previous.values()}
 
     def in_scope(lesson: Lesson) -> bool:
         return lesson.start > now and lesson.start.date() <= horizon
@@ -102,7 +111,7 @@ def diff_lessons(
     for uid, lesson in current_by_id.items():
         before = previous.get(uid)
         if before is None:
-            if in_scope(lesson):
+            if in_scope(lesson) and lesson.start.date() in known_days:
                 changes.append(LessonChange(ChangeType.ADDED, lesson))
             continue
         if not in_scope(lesson) and not in_scope(before):

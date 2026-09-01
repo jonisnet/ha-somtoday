@@ -96,12 +96,34 @@ def test_room_and_teacher_changes_are_separate():
 
 
 def test_an_added_lesson_is_reported():
+    """An extra lesson on a day that already had lessons is a real insertion."""
     before = [lesson("a", start=at(2, 8, 30))]
     after = [lesson("a", start=at(2, 8, 30)), lesson("b", start=at(2, 10, 0))]
 
     changes = diff(before, after)
     assert [c.type for c in changes] == [ChangeType.ADDED]
     assert changes[0].lesson.uid == "b"
+
+
+def test_a_newly_published_day_is_not_a_change():
+    """Reported from use: a school publishing the timetable a fortnight out
+    produced "8 nieuwe lessen" for a day nobody had changed anything about.
+    A day we held nothing for is publication, not a change to the schedule."""
+    before = [lesson("bekend", start=at(2, 8, 30))]
+    nieuwe_dag = [
+        lesson(f"nieuw-{i}", start=at(15, 8 + i, 0)) for i in range(8)
+    ]
+    assert diff(before, before + nieuwe_dag) == []
+
+
+def test_a_lesson_added_to_a_known_day_still_counts():
+    """The mirror of the rule: only *unseen days* are treated as publication."""
+    before = [lesson("bekend", start=at(15, 8, 30))]
+    after = before + [lesson("extra", start=at(15, 14, 0), subject="bijles")]
+
+    changes = diff(before, after)
+    assert [c.type for c in changes] == [ChangeType.ADDED]
+    assert changes[0].lesson.uid == "extra"
 
 
 def test_a_removed_lesson_is_reported():
@@ -201,7 +223,15 @@ def test_event_payload_shape():
 
 
 def test_event_payload_without_a_previous_version():
-    added = diff([], [lesson("a", start=at(2, 8, 30))])[0].as_event_data()
+    """`added` carries no `previous` — there was no earlier version of it.
+
+    The day has to be one we already knew, otherwise this counts as the
+    timetable being published rather than changed.
+    """
+    known = [lesson("bekend", start=at(2, 8, 30))]
+    after = known + [lesson("nieuw", start=at(2, 10, 0))]
+
+    added = diff(known, after)[0].as_event_data()
     assert added["type"] == "added"
     assert "previous" not in added
 

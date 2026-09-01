@@ -4,6 +4,21 @@ All notable changes to the Somtoday integration are documented here.
 Development happens in beta releases (`X.Y.Z-beta.N`) between occasional real
 releases, where this file is consolidated into one summary per real version.
 
+## 0.1.2
+
+### Fixed
+- **A newly published week is no longer announced as eight new lessons.**
+  Schools release the timetable a fortnight or so ahead, and a day nobody had
+  any data for suddenly having lessons was being reported as eight `added`
+  changes. That is the schedule being published, not changed. Only lessons
+  landing on a day that already had lessons count as an insertion now — a
+  genuinely extra lesson is still reported.
+- **The example automation logged a template error per change per device.**
+  It read `c.previous`, which does not exist on an `added` change; a missing
+  key is an error in Home Assistant's templating even when the surrounding
+  `if` handles it. It uses `c.get('previous')` now. The message itself was
+  always correct — this only filled the log.
+
 ## 0.1.1
 
 ### Fixed
