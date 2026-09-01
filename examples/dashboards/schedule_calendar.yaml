@@ -1,0 +1,8 @@
+# The timetable as a calendar card.
+#
+# Cancelled lessons stay on the calendar with a "Vervallen: " prefix, so a
+# dropped lesson is visibly different from an empty slot.
+type: calendar
+initial_view: dayGridDay
+entities:
+  - calendar.somtoday_<naam>_rooster

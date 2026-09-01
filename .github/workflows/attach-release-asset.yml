@@ -1,0 +1,43 @@
+name: Attach release asset
+
+# Builds somtoday.zip from the released tag and attaches it, so every release
+# ships the folder the README's manual-install instructions tell people to copy
+# — and so download counts are visible per release.
+#
+# Checks out the tag rather than the default branch on purpose: the asset must
+# be what was released, not whatever main has moved on to since.
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  upload-asset:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Build somtoday.zip
+        run: |
+          cd custom_components
+          zip -r ../somtoday.zip somtoday -x '*__pycache__*' '*.pyc'
+
+      - name: Verify the manifest version matches the tag
+        run: |
+          version=$(python -c "import json;print(json.load(open('custom_components/somtoday/manifest.json'))['version'])")
+          tag="${{ github.event.release.tag_name }}"
+          if [ "v$version" != "$tag" ]; then
+            echo "manifest.json says $version but the tag is $tag" >&2
+            exit 1
+          fi
+          echo "manifest $version matches tag $tag"
+
+      - name: Upload bundled integration
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ github.event.release.tag_name }}" somtoday.zip --repo "${{ github.repository }}" --clobber

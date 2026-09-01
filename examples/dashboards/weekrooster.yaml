@@ -1,0 +1,80 @@
+# The active week, marked against the normal week — plus the normal week itself.
+#
+# Replace every <naam> with your student's slug. On a Dutch Home Assistant the
+# sensors are `deze_week` and `basisrooster`; on an English one, `this_week`
+# and `normal_week`.
+#
+# The base-week sensor is disabled by default, because it only becomes
+# trustworthy once several weeks have been fetched. Enable it under
+# Settings → Devices & services → Somtoday → the student's device, and set
+# "Days of schedule to fetch" to 3 or 4 weeks in the integration options —
+# with two weeks the normal week is a guess, with four it is a pattern.
+type: vertical-stack
+cards:
+  # ------------------------------------------------------------ deze week --
+  - type: markdown
+    content: |
+      {% set w = 'sensor.somtoday_<naam>_deze_week' %}
+      {% set dagen = ['maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag','zondag'] %}
+      {% set maanden = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'] %}
+      {% set uitleg = {
+        'cancelled': 'vervalt',
+        'extra': 'extra les',
+        'different_room': 'ander lokaal',
+        'different_teacher': 'andere docent',
+        'different_time': 'andere tijd',
+        'different_subject': 'ander vak' } %}
+      {% set days = state_attr(w, 'days') or [] %}
+      ### 🗓️ Week {{ state_attr(w, 'week_number') }}
+      {{ state_attr(w, 'lesson_count') }} lessen
+      {%- set afw = state_attr(w, 'deviation_count') or 0 %}
+      {%- if afw %} · **{{ afw }} {{ 'afwijking' if afw == 1 else 'afwijkingen' }} t.o.v. normaal**
+      {%- else %} · volgens het gewone rooster{% endif %}
+
+      {% for d in days %}
+      {%- set datum = d.date | as_datetime %}
+      **{{ dagen[d.weekday - 1] }} {{ datum.day }} {{ maanden[datum.month - 1] }}**
+
+      | | Tijd | Vak | Lok. | |
+      |--:|:--|:--|:--|:--|
+      {% for l in d.lessons -%}
+      {%- set van = l.start | as_datetime | as_local -%}
+      {%- set tot = l.end | as_datetime | as_local -%}
+      | {{ l.period or '' }} | {{ van.strftime('%H:%M') }}–{{ tot.strftime('%H:%M') }} |
+      {{- ' ' }}{% if l.cancelled %}~~{{ l.subject or 'les' }}~~{% else %}{{ l.subject or 'les' }}{% endif %} |
+      {{- ' ' }}{{ l.location or '–' }} |
+      {{- ' ' }}{% if l.deviates %}⚠️ {{ uitleg.get(l.deviation, l.deviation) }}{% endif %} |
+      {% endfor -%}
+      {%- for m in d.missing -%}
+      | {{ m.period or '' }} | {{ m.start_time }}–{{ m.end_time }} | ~~{{ m.subject or 'les' }}~~ | {{ m.location or '–' }} | ⚠️ staat niet op het rooster |
+      {% endfor %}
+      {% endfor %}
+      {% if not days %}Geen lessen deze week.{% endif %}
+
+  # ------------------------------------------------------ basisrooster --
+  - type: markdown
+    content: |
+      {% set b = 'sensor.somtoday_<naam>_basisrooster' %}
+      {% set dagen = ['maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag','zondag'] %}
+      {% if states(b) in ['unknown','unavailable','none'] %}
+        ### 📋 Basisrooster
+        Nog niet beschikbaar. Zet de sensor **Basisrooster** aan bij het apparaat,
+        en haal minstens 2 weken rooster op in de opties.
+      {% else %}
+        {% set weken = state_attr(b, 'weeks_observed') or 0 %}
+        ### 📋 Basisrooster
+        Het gewone weekrooster, afgeleid uit **{{ weken }}**
+        {{ 'week' if weken == 1 else 'weken' }} rooster.
+        {%- if weken < 3 %} *Met zo weinig weken is dit nog een schatting —
+        zet "Aantal dagen rooster ophalen" hoger voor een betrouwbaarder beeld.*{% endif %}
+
+        {% for d in state_attr(b, 'days') or [] %}
+        **{{ dagen[d.weekday - 1] }}**
+
+        | | Tijd | Vak | Lok. | Doc. |
+        |--:|:--|:--|:--|:--|
+        {% for l in d.lessons -%}
+        | {{ l.period or '' }} | {{ l.start_time }}–{{ l.end_time }} | {{ l.subject or 'les' }} | {{ l.location or '–' }} | {{ l.teacher or '–' }} |
+        {% endfor %}
+        {% endfor %}
+      {% endif %}

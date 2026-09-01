@@ -1,0 +1,9 @@
+# Pin the linters and the Home Assistant test harness: new releases regularly
+# make previously-passing code fail. Bump these deliberately.
+
+pytest>=7.1.0
+pytest-cov>=3.0.0
+pytest-mock>=3.10
+pytest-homeassistant-custom-component==0.13.316
+aioresponses>=0.7.6
+ruff==0.16.5

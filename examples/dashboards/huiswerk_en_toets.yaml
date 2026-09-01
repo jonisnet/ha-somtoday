@@ -1,0 +1,95 @@
+# Homework and the next test, each item expandable to its full description.
+#
+# Somtoday's descriptions are whole teacher messages — several sentences about
+# what to bring and what to prepare. They are the useful part, and far too long
+# to show inline for seven items at once.
+#
+# `<details>` is the answer here rather than a popup: a Home Assistant markdown
+# card has no tap_action and no click handler, so a real dialog needs either a
+# custom Lovelace card or browser_mod. A disclosure element is native HTML,
+# needs no extra install, and gives genuine click-to-open behaviour today.
+#
+# Two separate cards, so they can sit in different places in a sections view.
+# Replace <naam> with your student's slug.
+
+# ------------------------------------------------------------------ toets --
+- type: markdown
+  content: |
+    {% set t = 'sensor.somtoday_<naam>_volgende_toets' %}
+    {% set dagen = ['maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag','zondag'] %}
+    {% set maanden = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'] %}
+    {% if states(t) in ['unknown','unavailable','none'] %}
+      <div style="display:flex;align-items:center;gap:9px">
+        <span style="font-size:1.4em">📝</span>
+        <span style="color:var(--secondary-text-color)">Geen toets gepland</span>
+      </div>
+    {% else %}
+      {% set due = states(t) | as_datetime | as_local %}
+      {% set over = (due.date() - now().date()).days %}
+      {% set urgent = over <= 2 %}
+      {% set kleur = 'var(--error-color)' if over <= 1 else ('var(--warning-color)' if urgent else 'var(--primary-color)') %}
+      <div style="border-left:4px solid {{ kleur }};background:var(--secondary-background-color);
+        border-radius:0 8px 8px 0;padding:10px 12px">
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap">
+          <span style="font-weight:600;font-size:1.05em">{{ state_attr(t,'subject') or 'Toets' }}</span>
+          <span style="background:{{ kleur }};color:#000;border-radius:10px;padding:1px 9px;font-size:.8em;font-weight:600">
+            {%- if over == 0 %}vandaag{% elif over == 1 %}morgen{% else %}over {{ over }} dagen{% endif -%}
+          </span>
+        </div>
+        <div style="margin-top:2px">{{ state_attr(t,'topic') or 'geen onderwerp opgegeven' }}</div>
+        <div style="color:var(--secondary-text-color);font-size:.85em;margin-top:2px">
+          {{ dagen[due.weekday()] }} {{ due.day }} {{ maanden[due.month - 1] }} om {{ due.strftime('%H:%M') }}
+        </div>
+        {%- if state_attr(t,'description') %}
+        <details style="margin-top:7px">
+          <summary style="cursor:pointer;color:var(--primary-color);font-size:.88em;font-weight:600">
+            Toelichting van de docent</summary>
+          <div style="margin-top:5px;font-size:.9em;line-height:1.45;color:var(--secondary-text-color)">
+            {{ state_attr(t,'description') }}</div>
+        </details>
+        {%- endif %}
+      </div>
+    {% endif %}
+
+# --------------------------------------------------------------- huiswerk --
+- type: markdown
+  content: |
+    {% set h = 'sensor.somtoday_<naam>_openstaand_huiswerk' %}
+    {% set items = state_attr(h, 'homework') or [] %}
+    {% set dagen = ['maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag','zondag'] %}
+    {% set maanden = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'] %}
+    <div style="display:flex;align-items:baseline;gap:9px;margin-bottom:8px">
+      <span style="font-size:1.25rem;font-weight:600">Huiswerk</span>
+      <span style="background:var(--primary-color);color:#000;border-radius:10px;
+        padding:1px 9px;font-size:.8em;font-weight:600">{{ items | count }}</span>
+    </div>
+    {% if items -%}
+    {%- for i in items -%}
+      {%- set due = i.due | as_datetime | as_local if i.due else none -%}
+      {%- set over = (due.date() - now().date()).days if due else 99 -%}
+      {%- set kleur = 'var(--error-color)' if over <= 0 else ('var(--warning-color)' if over <= 1 else 'var(--primary-color)') -%}
+      <div style="border-left:4px solid {{ kleur }};background:var(--secondary-background-color);
+        border-radius:0 8px 8px 0;padding:8px 11px;margin-bottom:7px">
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap">
+          <span style="font-weight:600">{{ i.subject or 'Vak onbekend' }}</span>
+          <span style="color:{{ kleur }};font-size:.82em;font-weight:600;white-space:nowrap">
+            {%- if not due %}geen datum
+            {%- elif over <= 0 %}vandaag
+            {%- elif over == 1 %}morgen
+            {%- else %}{{ dagen[due.weekday()][:2] }} {{ due.day }} {{ maanden[due.month - 1] }}{% endif -%}
+          </span>
+        </div>
+        <div style="font-size:.95em;margin-top:1px">{{ i.topic or 'huiswerk' }}</div>
+        {%- if i.description %}
+        <details style="margin-top:5px">
+          <summary style="cursor:pointer;color:var(--primary-color);font-size:.85em;font-weight:600">
+            Toelichting</summary>
+          <div style="margin-top:5px;font-size:.88em;line-height:1.45;color:var(--secondary-text-color)">
+            {{ i.description }}</div>
+        </details>
+        {%- endif %}
+      </div>
+    {%- endfor -%}
+    {%- else -%}
+    <div style="color:var(--secondary-text-color)">Niets openstaand. 🎉</div>
+    {%- endif %}

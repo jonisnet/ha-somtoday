@@ -1,0 +1,44 @@
+planner_add:
+  name: Add planner appointment
+  description: Add a locally stored appointment to a student's timetable.
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: somtoday
+    student_id:
+      required: true
+      selector:
+        number:
+          min: 1
+          mode: box
+    title:
+      required: true
+      selector:
+        text:
+    start:
+      required: true
+      selector:
+        datetime:
+    end:
+      required: true
+      selector:
+        datetime:
+    description:
+      selector:
+        text:
+          multiline: true
+planner_delete:
+  name: Delete planner appointment
+  description: Delete a locally stored appointment.
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: somtoday
+    item_id:
+      required: true
+      selector:
+        text:

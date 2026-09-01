@@ -1,0 +1,36 @@
+# Notify when a lesson on the next school day is dropped.
+#
+# HOW RELIABLE IS THIS? Somtoday marks a dropped lesson with an
+# `afspraakStatus` the integration maps to `cancelled`, and the next-school-day
+# sensor exposes both the count and the list. So "a lesson was dropped" is
+# reliably detectable. What is NOT guaranteed is *how quickly*: the change only
+# shows up on the next poll (30 minutes by default), and only for the day the
+# sensor currently describes. A lesson cancelled three days out is on the
+# calendar entity straight away, but does not fire this automation until that
+# day becomes the next school day.
+alias: Somtoday - lesson cancelled
+description: Reports which lessons on the next school day have been dropped.
+triggers:
+  - trigger: state
+    entity_id: sensor.somtoday_<naam>_eerstvolgende_schooldag
+    attribute: cancelled_count
+conditions:
+  # Only fire when the count actually went up: it also resets to 0 when the
+  # sensor rolls over to a fresh day, and that is not news.
+  - condition: template
+    value_template: >
+      {{ (trigger.to_state.attributes.cancelled_count | int(0))
+         > (trigger.from_state.attributes.cancelled_count | int(0)) }}
+actions:
+  - action: notify.mobile_app_<device>
+    data:
+      title: Les vervallen
+      message: >
+        {%- set dropped = (trigger.to_state.attributes.lessons or [])
+                          | selectattr('cancelled') | list -%}
+        {%- for lesson in dropped -%}
+          {{ lesson.subject or 'Les' }}
+          om {{ (lesson.start | as_datetime | as_local).strftime('%H:%M') }}
+          {%- if not loop.last %}, {% endif -%}
+        {%- endfor %} vervalt.
+mode: single

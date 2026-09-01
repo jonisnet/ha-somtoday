@@ -1,0 +1,19 @@
+# Heads-up two days before a test.
+alias: Somtoday - test coming up
+description: Notifies once, two days before the next test.
+triggers:
+  - trigger: template
+    value_template: >
+      {%- set due = states('sensor.somtoday_<naam>_volgende_toets') -%}
+      {{ due not in ['unknown', 'unavailable', 'none']
+         and 0 < (due | as_datetime - now()).total_seconds() <= 172800 }}
+actions:
+  - action: notify.mobile_app_<device>
+    data:
+      title: Toets over twee dagen
+      message: >
+        {%- set sensor = 'sensor.somtoday_<naam>_volgende_toets' -%}
+        {{ state_attr(sensor, 'subject') or 'Toets' }}:
+        {{ state_attr(sensor, 'topic') or 'geen onderwerp opgegeven' }}
+        op {{ (states(sensor) | as_datetime | as_local).strftime('%A %-d %B om %H:%M') }}.
+mode: single

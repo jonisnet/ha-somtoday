@@ -1,0 +1,119 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Sign in to Somtoday",
+        "description": "Somtoday's login only works in a real browser, so Home Assistant cannot do it for you. Three steps:\n\n1. Open [the Somtoday login page]({auth_url}) in a new browser tab and sign in as usual (pick your school, then your own account — school SSO and two-factor both work here).\n2. Somtoday then redirects to an address starting with `somtoday://`. No browser can open that, and **that address carries the login code**.\n3. Paste it below.\n\n**Nothing seems to happen after signing in? That is Chrome, and the login did work.** Chrome swallows redirects to unknown schemes without a word, so the address never reaches the address bar. To read it out: press F12 *before* signing in, open the **Network** tab, tick **Preserve log**, then sign in. Now click inside the request list and press Ctrl+F, and search for `somtoday://` — that finds the one response holding the code. Copy its `location` value; pasting the whole line below is fine. (Searching beats scrolling: the list grows downwards, so the request you want is the last one, not the first.)\n\nThat address contains a single-use login code — never share it with anyone. Home Assistant never sees your password.",
+        "data": {
+          "redirect_url": "Redirect address"
+        },
+        "data_description": {
+          "redirect_url": "The somtoday://... address, from the address bar or from the `location` header in DevTools. The whole header line is fine."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Sign in to Somtoday again",
+        "description": "Somtoday no longer accepts the stored session, so it needs a fresh sign-in.\n\nSomtoday's login only works in a real browser, so Home Assistant cannot do it for you. Three steps:\n\n1. Open [the Somtoday login page]({auth_url}) in a new browser tab and sign in as usual (pick your school, then your own account — school SSO and two-factor both work here).\n2. Somtoday then redirects to an address starting with `somtoday://`. No browser can open that, and **that address carries the login code**.\n3. Paste it below.\n\n**Nothing seems to happen after signing in? That is Chrome, and the login did work.** Chrome swallows redirects to unknown schemes without a word, so the address never reaches the address bar. To read it out: press F12 *before* signing in, open the **Network** tab, tick **Preserve log**, then sign in. Now click inside the request list and press Ctrl+F, and search for `somtoday://` — that finds the one response holding the code. Copy its `location` value; pasting the whole line below is fine. (Searching beats scrolling: the list grows downwards, so the request you want is the last one, not the first.)\n\nThat address contains a single-use login code — never share it with anyone. Home Assistant never sees your password.",
+        "data": {
+          "redirect_url": "Redirect address"
+        },
+        "data_description": {
+          "redirect_url": "The somtoday://... address, from the address bar or from the `location` header in DevTools. The whole header line is fine."
+        }
+      }
+    },
+    "error": {
+      "invalid_url": "No login code found in that address. It has to be the somtoday://... address your browser could not open, and it must contain a code= part. The link above is still valid, so you do not have to sign in again.",
+      "login_page": "That is the address of the Somtoday login page, not of the redirect that comes after it. Finish signing in first. If that then looks like it did nothing, Chrome is swallowing the redirect: read the address out with F12 - Network - Ctrl+F for `somtoday://` - the `location` response header. The link above is still valid.",
+      "state_mismatch": "That address belongs to an earlier login attempt. Use the link above and try once more.",
+      "invalid_auth": "Somtoday rejected the login code. Codes expire within a few minutes, so open the link above and sign in again.",
+      "cannot_connect": "Could not reach Somtoday. Check your internet connection and try again.",
+      "no_students": "Signed in successfully, but this account has no students linked to it.",
+      "unknown": "Something unexpected went wrong. Please try again."
+    },
+    "abort": {
+      "already_configured": "This Somtoday account has already been added.",
+      "wrong_account": "Those credentials belong to a different Somtoday account. Sign in with the account this entry was set up with.",
+      "reauth_successful": "Somtoday has been reconnected."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Somtoday options",
+        "data": {
+          "refresh_interval": "Refresh interval",
+          "days_ahead": "Days of schedule to fetch"
+        },
+        "data_description": {
+          "refresh_interval": "How often to check Somtoday for changes.",
+          "days_ahead": "How far ahead the schedule is loaded. The calendar can still show any period — it just fetches those on demand."
+        }
+      }
+    }
+  },
+  "selector": {
+    "refresh_interval": {
+      "options": {
+        "15": "Every 15 minutes",
+        "30": "Every 30 minutes",
+        "60": "Every hour",
+        "120": "Every 2 hours",
+        "240": "Every 4 hours"
+      }
+    },
+    "days_ahead": {
+      "options": {
+        "7": "1 week",
+        "14": "2 weeks",
+        "21": "3 weeks",
+        "28": "4 weeks"
+      }
+    }
+  },
+  "entity": {
+    "calendar": {
+      "schedule": {
+        "name": "Schedule"
+      }
+    },
+    "sensor": {
+      "current_lesson": {
+        "name": "Current lesson"
+      },
+      "next_lesson": {
+        "name": "Next lesson"
+      },
+      "next_school_day": {
+        "name": "Next school day"
+      },
+      "open_homework": {
+        "name": "Open homework"
+      },
+      "next_test": {
+        "name": "Next test"
+      },
+      "today": {
+        "name": "Today"
+      },
+      "next_week": {
+        "name": "Next week"
+      },
+      "upcoming_work": {
+        "name": "Upcoming schoolwork"
+      },
+      "planner": {
+        "name": "Own appointments"
+      },
+      "active_week": {
+        "name": "This week"
+      },
+      "base_week": {
+        "name": "Normal week"
+      },
+      "last_update": {
+        "name": "Last update"
+      }
+    }
+  }
+}

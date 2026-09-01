@@ -1,0 +1,9 @@
+# Normalise every text file to LF in the repository. The first commit came from
+# a browser upload on Windows and landed with CRLF throughout; without this the
+# next commit from any POSIX machine would rewrite every file again.
+* text=auto eol=lf
+
+# Never touch binaries.
+*.png binary
+*.ico binary
+*.zip binary

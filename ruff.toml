@@ -1,0 +1,32 @@
+# Mirrors Home Assistant's own PEP 8 + PEP 257 enforcement, including its
+# ignore list, so code here would pass a core review unchanged.
+# https://developers.home-assistant.io/docs/development_guidelines
+line-length = 88
+target-version = "py312"
+
+[lint]
+select = ["D", "E", "F", "W", "I"]
+ignore = [
+    # Home Assistant's own pydocstyle ignores (conflicting / non-required).
+    "D202",
+    "D203",
+    "D213",
+    "D406",
+    "D407",
+    "D417",
+    # Line length and indentation are the formatter's job, per Home Assistant.
+    "E501",
+    "E111",
+    "E114",
+    "E117",
+    "W191",
+    "D206",
+    "D300",
+]
+
+[lint.isort]
+known-first-party = ["custom_components"]
+
+[lint.per-file-ignores]
+# Tests do not need docstrings; every other rule still applies to them.
+"tests/**" = ["D"]

@@ -1,0 +1,47 @@
+# One card with everything school-related for today.
+type: vertical-stack
+cards:
+  - type: entities
+    title: School
+    entities:
+      - entity: sensor.somtoday_<naam>_huidige_les
+        name: Nu
+      - entity: sensor.somtoday_<naam>_volgende_les
+        name: Volgende les
+      - entity: sensor.somtoday_<naam>_eerstvolgende_schooldag
+        name: Volgende schooldag
+      - entity: sensor.somtoday_<naam>_openstaand_huiswerk
+        name: Openstaand huiswerk
+      - entity: sensor.somtoday_<naam>_volgende_toets
+        name: Volgende toets
+
+  # The lesson list lives in an attribute, so a markdown card renders it.
+  - type: markdown
+    title: Volgende schooldag
+    content: |
+      {% set sensor = 'sensor.somtoday_<naam>_eerstvolgende_schooldag' %}
+      {% set lessons = state_attr(sensor, 'lessons') or [] %}
+      {% if lessons %}
+      | Tijd | Vak | Lokaal | Docent |
+      |---|---|---|---|
+      {% for lesson in lessons -%}
+      | {{ (lesson.start | as_datetime | as_local).strftime('%H:%M') }}
+      | {{ '~~' ~ (lesson.subject or 'les') ~ '~~' if lesson.cancelled else (lesson.subject or 'les') }}
+      | {{ lesson.location or '-' }} | {{ lesson.teacher or '-' }} |
+      {% endfor %}
+      {% else %}
+      Geen lessen gepland.
+      {% endif %}
+
+  - type: markdown
+    title: Huiswerk
+    content: |
+      {% set items = state_attr('sensor.somtoday_<naam>_openstaand_huiswerk', 'homework') or [] %}
+      {% if items %}
+      {% for item in items -%}
+      - **{{ item.subject or 'Vak onbekend' }}** — {{ item.topic or 'huiswerk' }}
+        {%- if item.due %} ({{ (item.due | as_datetime | as_local).strftime('%a %-d %b') }}){% endif %}
+      {% endfor %}
+      {% else %}
+      Niets openstaand. 🎉
+      {% endif %}

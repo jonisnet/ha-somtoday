@@ -1,0 +1,47 @@
+{
+  "entity": {
+    "calendar": {
+      "schedule": {
+        "default": "mdi:timetable"
+      }
+    },
+    "sensor": {
+      "current_lesson": {
+        "default": "mdi:school"
+      },
+      "next_lesson": {
+        "default": "mdi:clock-start"
+      },
+      "next_school_day": {
+        "default": "mdi:calendar-arrow-right"
+      },
+      "today": {
+        "default": "mdi:calendar-today"
+      },
+      "open_homework": {
+        "default": "mdi:notebook-edit-outline"
+      },
+      "next_test": {
+        "default": "mdi:clipboard-text-clock-outline"
+      },
+      "last_update": {
+        "default": "mdi:update"
+      },
+      "active_week": {
+        "default": "mdi:calendar-week"
+      },
+      "base_week": {
+        "default": "mdi:calendar-blank-outline"
+      },
+      "next_week": {
+        "default": "mdi:calendar-arrow-right"
+      },
+      "upcoming_work": {
+        "default": "mdi:clipboard-list-outline"
+      },
+      "planner": {
+        "default": "mdi:calendar-account-outline"
+      }
+    }
+  }
+}

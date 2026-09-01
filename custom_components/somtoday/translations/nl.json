@@ -1,0 +1,119 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Inloggen bij Somtoday",
+        "description": "De login van Somtoday werkt alleen in een echte browser, dus Home Assistant kan dat niet voor je doen. Drie stappen:\n\n1. Open [de Somtoday-inlogpagina]({auth_url}) in een nieuw browsertabblad en log in zoals je gewend bent (kies je school en daarna je eigen account — inloggen via school, Microsoft of Google werkt hier ook).\n2. Somtoday stuurt je daarna door naar een adres dat begint met `somtoday://`. Geen enkele browser kan dat openen, en **in dat adres staat de inlogcode**.\n3. Plak het hieronder.\n\n**Lijkt er na het inloggen helemaal niets te gebeuren? Dat is Chrome, en het inloggen is wél gelukt.** Chrome slikt doorverwijzingen naar onbekende protocollen geruisloos in, dus het adres komt nooit in de adresbalk. Zo lees je het toch uit: druk *vóór* het inloggen op F12, ga naar het tabblad **Network**, vink **Preserve log** aan en log dan in. Klik daarna in de lijst met verzoeken, druk op Ctrl+F en zoek op `somtoday://` — dat vindt precies het antwoord waar de code in staat. Kopieer daar de waarde van `location`; die hele regel hieronder plakken mag. (Zoeken is handiger dan scrollen: de lijst groeit naar beneden, dus je moet bij het laatste verzoek zijn, niet bij het eerste.)\n\nIn dat adres staat een eenmalige inlogcode — deel die met niemand. Home Assistant ziet je wachtwoord nooit.",
+        "data": {
+          "redirect_url": "Doorverwijsadres"
+        },
+        "data_description": {
+          "redirect_url": "Het somtoday://...-adres, uit de adresbalk of uit de `location`-header in DevTools. De hele headerregel plakken mag."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Opnieuw inloggen bij Somtoday",
+        "description": "Somtoday accepteert de opgeslagen sessie niet meer, dus je moet opnieuw inloggen.\n\nDe login van Somtoday werkt alleen in een echte browser, dus Home Assistant kan dat niet voor je doen. Drie stappen:\n\n1. Open [de Somtoday-inlogpagina]({auth_url}) in een nieuw browsertabblad en log in zoals je gewend bent (kies je school en daarna je eigen account — inloggen via school, Microsoft of Google werkt hier ook).\n2. Somtoday stuurt je daarna door naar een adres dat begint met `somtoday://`. Geen enkele browser kan dat openen, en **in dat adres staat de inlogcode**.\n3. Plak het hieronder.\n\n**Lijkt er na het inloggen helemaal niets te gebeuren? Dat is Chrome, en het inloggen is wél gelukt.** Chrome slikt doorverwijzingen naar onbekende protocollen geruisloos in, dus het adres komt nooit in de adresbalk. Zo lees je het toch uit: druk *vóór* het inloggen op F12, ga naar het tabblad **Network**, vink **Preserve log** aan en log dan in. Klik daarna in de lijst met verzoeken, druk op Ctrl+F en zoek op `somtoday://` — dat vindt precies het antwoord waar de code in staat. Kopieer daar de waarde van `location`; die hele regel hieronder plakken mag. (Zoeken is handiger dan scrollen: de lijst groeit naar beneden, dus je moet bij het laatste verzoek zijn, niet bij het eerste.)\n\nIn dat adres staat een eenmalige inlogcode — deel die met niemand. Home Assistant ziet je wachtwoord nooit.",
+        "data": {
+          "redirect_url": "Doorverwijsadres"
+        },
+        "data_description": {
+          "redirect_url": "Het somtoday://...-adres, uit de adresbalk of uit de `location`-header in DevTools. De hele headerregel plakken mag."
+        }
+      }
+    },
+    "error": {
+      "invalid_url": "Geen inlogcode gevonden in dat adres. Het moet het somtoday://...-adres zijn dat je browser niet kon openen, en daar hoort code= in te staan. De link hierboven werkt nog, dus je hoeft niet opnieuw in te loggen.",
+      "login_page": "Dit is het adres van de Somtoday-inlogpagina, nog niet van de doorverwijzing daarna. Log eerst helemaal in. Lijkt er dan niets te gebeuren, dan slikt Chrome de doorverwijzing in: lees het adres uit via F12 - Network - Ctrl+F op `somtoday://` - de response header `location`. De link hierboven werkt nog.",
+      "state_mismatch": "Dat adres hoort bij een eerdere inlogpoging. Gebruik de link hierboven en probeer het nog een keer.",
+      "invalid_auth": "Somtoday accepteerde de inlogcode niet. Zo'n code verloopt binnen een paar minuten, dus open de link hierboven en log opnieuw in.",
+      "cannot_connect": "Kan Somtoday niet bereiken. Controleer je internetverbinding en probeer het opnieuw.",
+      "no_students": "Inloggen is gelukt, maar aan dit account zijn geen leerlingen gekoppeld.",
+      "unknown": "Er ging iets onverwachts mis. Probeer het opnieuw."
+    },
+    "abort": {
+      "already_configured": "Dit Somtoday-account is al toegevoegd.",
+      "wrong_account": "Deze inloggegevens horen bij een ander Somtoday-account. Log in met het account waarmee deze koppeling is ingesteld.",
+      "reauth_successful": "De verbinding met Somtoday is hersteld."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Somtoday-opties",
+        "data": {
+          "refresh_interval": "Vernieuwingsinterval",
+          "days_ahead": "Aantal dagen rooster ophalen"
+        },
+        "data_description": {
+          "refresh_interval": "Hoe vaak er bij Somtoday gecontroleerd wordt op wijzigingen.",
+          "days_ahead": "Hoe ver vooruit het rooster wordt ingeladen. De kalender kan nog steeds elke periode tonen — die haalt hij dan direct op."
+        }
+      }
+    }
+  },
+  "selector": {
+    "refresh_interval": {
+      "options": {
+        "15": "Elke 15 minuten",
+        "30": "Elk half uur",
+        "60": "Elk uur",
+        "120": "Elke 2 uur",
+        "240": "Elke 4 uur"
+      }
+    },
+    "days_ahead": {
+      "options": {
+        "7": "1 week",
+        "14": "2 weken",
+        "21": "3 weken",
+        "28": "4 weken"
+      }
+    }
+  },
+  "entity": {
+    "calendar": {
+      "schedule": {
+        "name": "Rooster"
+      }
+    },
+    "sensor": {
+      "current_lesson": {
+        "name": "Huidige les"
+      },
+      "next_lesson": {
+        "name": "Volgende les"
+      },
+      "next_school_day": {
+        "name": "Eerstvolgende schooldag"
+      },
+      "open_homework": {
+        "name": "Openstaand huiswerk"
+      },
+      "next_test": {
+        "name": "Volgende toets"
+      },
+      "today": {
+        "name": "Vandaag"
+      },
+      "next_week": {
+        "name": "Volgende week"
+      },
+      "upcoming_work": {
+        "name": "Aankomend schoolwerk"
+      },
+      "planner": {
+        "name": "Eigen afspraken"
+      },
+      "active_week": {
+        "name": "Deze week"
+      },
+      "base_week": {
+        "name": "Basisrooster"
+      },
+      "last_update": {
+        "name": "Laatste update"
+      }
+    }
+  }
+}

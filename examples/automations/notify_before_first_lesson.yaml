@@ -1,0 +1,30 @@
+# Reminder shortly before the first lesson of the day starts.
+#
+# Triggers off the next-school-day timestamp rather than a fixed clock time, so
+# a late start or a cancelled first period shifts the reminder automatically.
+alias: Somtoday - reminder before the first lesson
+description: Notifies 45 minutes before the first lesson starts.
+triggers:
+  - trigger: template
+    value_template: >
+      {%- set start = states('sensor.somtoday_<naam>_eerstvolgende_schooldag') -%}
+      {{ start not in ['unknown', 'unavailable', 'none']
+         and 0 < (start | as_datetime - now()).total_seconds() <= 2700 }}
+actions:
+  - action: notify.mobile_app_<device>
+    data:
+      title: Bijna tijd voor school
+      message: >
+        {%- set sensor = 'sensor.somtoday_<naam>_eerstvolgende_schooldag' -%}
+        {%- set first = (state_attr(sensor, 'lessons') or [])
+                        | rejectattr('cancelled')
+                        | list | first -%}
+        {%- if first -%}
+          Eerste les: {{ first.subject or 'les' }}
+          om {{ first.start | as_datetime | as_local }}
+          {%- if first.location %} in lokaal {{ first.location }}{% endif %}
+          {%- if first.teacher %} bij {{ first.teacher }}{% endif %}.
+        {%- else -%}
+          De eerste les begint bijna.
+        {%- endif -%}
+mode: single

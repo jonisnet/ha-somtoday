@@ -1,0 +1,129 @@
+# Notify several devices when the timetable changes, showing was → now.
+#
+# Driven by the `somtoday_schedule_changed` event, which the integration fires
+# once per student per poll with every change batched together — so a whole day
+# being dropped arrives as one notification, not seven.
+#
+# What counts as a change: a lesson cancelled or reinstated, moved to another
+# time, another room or another teacher, added to the timetable, or removed
+# from it. Lessons that have already started are ignored, and so is the newly
+# revealed far edge of the fetch window — otherwise every poll would announce a
+# whole new day of "added" lessons.
+#
+# Nothing fires on the first poll after a Home Assistant restart: the previous
+# timetable is only held in memory, so every restart would otherwise look like
+# the entire schedule had just appeared.
+#
+# Note on `removed`: there the change's own fields ARE the old lesson, because
+# there is no new version of it. Every other type carries `previous` alongside.
+alias: Somtoday - roosterwijziging
+description: Notifies every listed device, with the old and new details side by side.
+triggers:
+  - trigger: event
+    event_type: somtoday_schedule_changed
+
+# For a parent account with several children, add a condition on the device to
+# route each child's changes somewhere different:
+#   - condition: template
+#     value_template: "{{ trigger.event.data.device_id == 'PUT_DEVICE_ID_HERE' }}"
+conditions: []
+
+actions:
+  - repeat:
+      # Every device that should get this. Use the **full** service name,
+      # exactly as it appears under Developer tools → Actions — including the
+      # `notify.` part. The action below passes it through unchanged, so what
+      # you see in the UI is what you paste here, and there is no prefix to
+      # accidentally double up.
+      #
+      # A notify group in configuration.yaml is tidier if you use the same list
+      # in several automations:
+      #   notify:
+      #     - name: gezin
+      #       platform: group
+      #       services:
+      #         - service: mobile_app_telefoon_van_kees
+      #         - service: mobile_app_telefoon_van_leerling
+      # ...after which this whole repeat block becomes a single
+      # `- action: notify.gezin`.
+      for_each:
+        - notify.mobile_app_telefoon_van_kees
+        - notify.mobile_app_telefoon_van_leerling
+      sequence:
+        - action: "{{ repeat.item }}"
+          data:
+            # `trigger` does not exist when the automation is started by hand
+            # with the Run button, and pressing Run is the obvious way to try
+            # this out. Without the guard the template raises instead of saying
+            # anything useful, which looks exactly like a broken automation.
+            # To test it properly, fire the event from
+            # Developer tools → Events instead — see the README.
+            title: >
+              {%- if trigger is not defined or trigger.event is not defined -%}
+                Somtoday roostermelding (test)
+              {%- else -%}
+                {%- set n = trigger.event.data.change_count -%}
+                {%- set dropped = trigger.event.data.cancelled_count -%}
+                {%- if n == 1 -%}
+                  Roosterwijziging
+                {%- elif dropped == n -%}
+                  {{ n }} lessen vervallen
+                {%- else -%}
+                  {{ n }} roosterwijzigingen
+                {%- endif -%}
+              {%- endif -%}
+            # Built as a list of lines and joined, rather than written out as
+            # flowing text: YAML folding plus Jinja indentation quietly turns
+            # the readable version into ragged output on a phone.
+            message: >
+              {%- if trigger is not defined or trigger.event is not defined -%}
+                Deze automatisering reageert op roosterwijzigingen van Somtoday.
+                Handmatig uitvoeren levert geen wijzigingen op — vuur het event
+                somtoday_schedule_changed af via Ontwikkelhulpmiddelen om het
+                echt te testen.
+              {%- else -%}
+              {%- set labels = {
+                'cancelled': 'Vervalt', 'reinstated': 'Gaat toch door',
+                'moved': 'Verplaatst', 'room_changed': 'Ander lokaal',
+                'teacher_changed': 'Andere docent', 'added': 'Nieuwe les',
+                'removed': 'Van rooster af' } -%}
+              {%- set dagen = ['maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag','zondag'] -%}
+              {%- set maanden = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'] -%}
+              {%- set ns = namespace(lines=[]) -%}
+              {%- for c in trigger.event.data.changes -%}
+                {%- set nu = c.start | as_datetime | as_local -%}
+                {%- set eind = c.end | as_datetime | as_local -%}
+                {%- set kop = labels.get(c.type, c.type) ~ ': ' ~ (c.subject or 'les')
+                      ~ ' (' ~ dagen[nu.weekday()] ~ ' ' ~ nu.day ~ ' ' ~ maanden[nu.month - 1] ~ ')' -%}
+                {%- set ns.lines = ns.lines + [kop] -%}
+                {%- if c.previous -%}
+                  {%- set was = c.previous.start | as_datetime | as_local -%}
+                  {%- set was_eind = c.previous.end | as_datetime | as_local -%}
+                  {%- set ns.lines = ns.lines + ['  was: ' ~ was.strftime('%H:%M') ~ '-' ~ was_eind.strftime('%H:%M')
+                        ~ (' · ' ~ c.previous.location if c.previous.location else '')
+                        ~ (' · ' ~ c.previous.teacher if c.previous.teacher else '')] -%}
+                {%- elif c.type == 'removed' -%}
+                  {%- set ns.lines = ns.lines + ['  was: ' ~ nu.strftime('%H:%M') ~ '-' ~ eind.strftime('%H:%M')
+                        ~ (' · ' ~ c.location if c.location else '')
+                        ~ (' · ' ~ c.teacher if c.teacher else '')] -%}
+                {%- endif -%}
+                {%- if c.type == 'cancelled' -%}
+                  {%- set ns.lines = ns.lines + ['  nu:  vervalt'] -%}
+                {%- elif c.type == 'removed' -%}
+                  {%- set ns.lines = ns.lines + ['  nu:  van het rooster af'] -%}
+                {%- else -%}
+                  {%- set ns.lines = ns.lines + ['  nu:  ' ~ nu.strftime('%H:%M') ~ '-' ~ eind.strftime('%H:%M')
+                        ~ (' · ' ~ c.location if c.location else '')
+                        ~ (' · ' ~ c.teacher if c.teacher else '')] -%}
+                {%- endif -%}
+                {%- if not loop.last -%}
+                  {%- set ns.lines = ns.lines + [''] -%}
+                {%- endif -%}
+              {%- endfor -%}
+              {{ ns.lines | join('\n') }}
+              {%- endif -%}
+
+# `queued` rather than `single`: two students on one account poll together, so
+# two events can arrive in the same instant and neither should be dropped.
+mode: queued
+max: 10

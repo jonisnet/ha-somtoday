@@ -1,0 +1,32 @@
+# Evening-before summary of the next school day.
+#
+# The next-school-day sensor rolls over to the following day once the last
+# lesson of today has ended, so at 20:00 it already describes tomorrow. During
+# a holiday it has no value at all, which the condition below filters out.
+alias: Somtoday - schoolday summary the evening before
+description: Sends tomorrow's first lesson and lesson count at 20:00.
+triggers:
+  - trigger: time
+    at: "20:00:00"
+conditions:
+  # Skip holidays and any evening where nothing is scheduled.
+  - condition: template
+    value_template: >
+      {{ states('sensor.somtoday_<naam>_eerstvolgende_schooldag')
+         not in ['unknown', 'unavailable', 'none'] }}
+actions:
+  - action: notify.mobile_app_<device>
+    data:
+      title: >
+        School {{ (state_attr('sensor.somtoday_<naam>_eerstvolgende_schooldag', 'date')
+                   | as_datetime | as_local).strftime('%A %-d %B') }}
+      message: >
+        {%- set sensor = 'sensor.somtoday_<naam>_eerstvolgende_schooldag' -%}
+        {%- set first = states(sensor) | as_datetime | as_local -%}
+        {%- set last = state_attr(sensor, 'last_lesson_end') | as_datetime | as_local -%}
+        {%- set count = state_attr(sensor, 'lesson_count') -%}
+        {%- set dropped = state_attr(sensor, 'cancelled_count') -%}
+        Eerste les om {{ first.strftime('%H:%M') }}, uit om {{ last.strftime('%H:%M') }}
+        ({{ count }} {{ 'les' if count == 1 else 'lessen' }}).
+        {%- if dropped %} {{ dropped }} vervallen.{% endif %}
+mode: single
