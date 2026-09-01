@@ -4,6 +4,24 @@ All notable changes to the Somtoday integration are documented here.
 Development happens in beta releases (`X.Y.Z-beta.N`) between occasional real
 releases, where this file is consolidated into one summary per real version.
 
+## Unreleased
+
+### Changed
+- **The example notification only covers the next few days now**, and links
+  each recipient to their own dashboard. Two days ahead normally; Thursday and
+  Friday reach through to Monday, because a Friday change to Monday's timetable
+  is exactly what is worth knowing on Friday. A change three weeks out no longer
+  interrupts anyone, and when every change falls outside the window nothing is
+  sent at all.
+
+  This filtering deliberately lives in the automation rather than in the
+  integration: the event reports every change it can see, and how far ahead is
+  worth interrupting someone for is a question about people, not about data.
+  Adjusting it needs no new release.
+
+  Only `examples/` changed, so the installed component is byte-identical to
+  0.1.2 and there is no release for this.
+
 ## 0.1.2
 
 ### Fixed

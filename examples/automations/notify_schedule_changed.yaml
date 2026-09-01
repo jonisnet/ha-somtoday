@@ -1,14 +1,20 @@
-# Notify several devices when the timetable changes, showing was → now.
+# Notify several devices when the timetable changes, showing was → now,
+# limited to the next couple of days and linking each recipient to a dashboard
+# they can actually open.
 #
 # Driven by the `somtoday_schedule_changed` event, which the integration fires
 # once per student per poll with every change batched together — so a whole day
 # being dropped arrives as one notification, not seven.
 #
-# What counts as a change: a lesson cancelled or reinstated, moved to another
-# time, another room or another teacher, added to the timetable, or removed
-# from it. Lessons that have already started are ignored, and so is the newly
-# revealed far edge of the fetch window — otherwise every poll would announce a
-# whole new day of "added" lessons.
+# The integration deliberately reports every change it can see, however far
+# out. How far ahead is worth interrupting someone for is a question about
+# people rather than about data, so that filtering lives here.
+#
+# What the integration already filters out, so this does not have to:
+#   - lessons that have already started; a finished lesson cannot change
+#   - the newly revealed far edge of the fetch window
+#   - a day it held nothing for, which is the school publishing the timetable
+#     rather than changing it
 #
 # Nothing fires on the first poll after a Home Assistant restart: the previous
 # timetable is only held in memory, so every restart would otherwise look like
@@ -17,40 +23,42 @@
 # Note on `removed`: there the change's own fields ARE the old lesson, because
 # there is no new version of it. Every other type carries `previous` alongside.
 alias: Somtoday - roosterwijziging
-description: Notifies every listed device, with the old and new details side by side.
+description: Notifies each device about changes in the next few days, linking to their own dashboard.
 triggers:
   - trigger: event
     event_type: somtoday_schedule_changed
 
-# For a parent account with several children, add a condition on the device to
-# route each child's changes somewhere different:
-#   - condition: template
-#     value_template: "{{ trigger.event.data.device_id == 'PUT_DEVICE_ID_HERE' }}"
-conditions: []
+conditions:
+  # Say nothing when every change falls outside the window. Without this the
+  # automation would send an empty notification about a change three weeks out.
+  - condition: template
+    value_template: >
+      {%- set wd = now().weekday() -%}
+      {#- Two days ahead, except that the last two working days have to reach
+          past the weekend: a Friday change to Monday's timetable is exactly
+          what is worth knowing on Friday. Thursday +4 and Friday +3 both land
+          on Monday. -#}
+      {%- set limiet = 4 if wd == 3 else (3 if wd == 4 else 2) -%}
+      {%- set ns = namespace(n=0) -%}
+      {%- for c in trigger.event.data.changes -%}
+        {%- set vooruit = ((c.start | as_datetime | as_local).date() - now().date()).days -%}
+        {%- if 0 <= vooruit <= limiet -%}{%- set ns.n = ns.n + 1 -%}{%- endif -%}
+      {%- endfor -%}
+      {{ ns.n > 0 }}
 
 actions:
   - repeat:
-      # Every device that should get this. Use the **full** service name,
-      # exactly as it appears under Developer tools → Actions — including the
-      # `notify.` part. The action below passes it through unchanged, so what
-      # you see in the UI is what you paste here, and there is no prefix to
-      # accidentally double up.
-      #
-      # A notify group in configuration.yaml is tidier if you use the same list
-      # in several automations:
-      #   notify:
-      #     - name: gezin
-      #       platform: group
-      #       services:
-      #         - service: mobile_app_telefoon_van_kees
-      #         - service: mobile_app_telefoon_van_leerling
-      # ...after which this whole repeat block becomes a single
-      # `- action: notify.gezin`.
+      # One entry per recipient: the full notify service name exactly as it
+      # appears under Developer tools → Actions, and the dashboard path that
+      # person is allowed to open. Tapping the notification takes them there,
+      # so each person can be sent somewhere they actually have access to.
       for_each:
-        - notify.mobile_app_telefoon_van_kees
-        - notify.mobile_app_telefoon_van_leerling
+        - service: notify.mobile_app_telefoon_een
+          dashboard: /lovelace/school
+        - service: notify.mobile_app_telefoon_twee
+          dashboard: /lovelace/school
       sequence:
-        - action: "{{ repeat.item }}"
+        - action: "{{ repeat.item.service }}"
           data:
             # `trigger` does not exist when the automation is started by hand
             # with the Run button, and pressing Run is the obvious way to try
@@ -62,14 +70,22 @@ actions:
               {%- if trigger is not defined or trigger.event is not defined -%}
                 Somtoday roostermelding (test)
               {%- else -%}
-                {%- set n = trigger.event.data.change_count -%}
-                {%- set dropped = trigger.event.data.cancelled_count -%}
-                {%- if n == 1 -%}
+                {%- set wd = now().weekday() -%}
+                {%- set limiet = 4 if wd == 3 else (3 if wd == 4 else 2) -%}
+                {%- set ns = namespace(n=0, weg=0) -%}
+                {%- for c in trigger.event.data.changes -%}
+                  {%- set vooruit = ((c.start | as_datetime | as_local).date() - now().date()).days -%}
+                  {%- if 0 <= vooruit <= limiet -%}
+                    {%- set ns.n = ns.n + 1 -%}
+                    {%- if c.type == 'cancelled' -%}{%- set ns.weg = ns.weg + 1 -%}{%- endif -%}
+                  {%- endif -%}
+                {%- endfor -%}
+                {%- if ns.n == 1 -%}
                   Roosterwijziging
-                {%- elif dropped == n -%}
-                  {{ n }} lessen vervallen
+                {%- elif ns.weg == ns.n -%}
+                  {{ ns.n }} lessen vervallen
                 {%- else -%}
-                  {{ n }} roosterwijzigingen
+                  {{ ns.n }} roosterwijzigingen
                 {%- endif -%}
               {%- endif -%}
             # Built as a list of lines and joined, rather than written out as
@@ -89,43 +105,52 @@ actions:
                 'removed': 'Van rooster af' } -%}
               {%- set dagen = ['maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag','zondag'] -%}
               {%- set maanden = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'] -%}
+              {%- set wd = now().weekday() -%}
+              {%- set limiet = 4 if wd == 3 else (3 if wd == 4 else 2) -%}
               {%- set ns = namespace(lines=[]) -%}
               {%- for c in trigger.event.data.changes -%}
                 {%- set nu = c.start | as_datetime | as_local -%}
                 {%- set eind = c.end | as_datetime | as_local -%}
-                {%- set kop = labels.get(c.type, c.type) ~ ': ' ~ (c.subject or 'les')
-                      ~ ' (' ~ dagen[nu.weekday()] ~ ' ' ~ nu.day ~ ' ' ~ maanden[nu.month - 1] ~ ')' -%}
-                {%- set ns.lines = ns.lines + [kop] -%}
-                {#- c.get('previous'), not c.previous: an `added` change has no
-                    previous version, and attribute access on a missing key logs
-                    a template error for every change on every device. -#}
-                {%- set vorig = c.get('previous') -%}
-                {%- if vorig -%}
-                  {%- set was = vorig.start | as_datetime | as_local -%}
-                  {%- set was_eind = vorig.end | as_datetime | as_local -%}
-                  {%- set ns.lines = ns.lines + ['  was: ' ~ was.strftime('%H:%M') ~ '-' ~ was_eind.strftime('%H:%M')
-                        ~ (' · ' ~ vorig.location if vorig.location else '')
-                        ~ (' · ' ~ vorig.teacher if vorig.teacher else '')] -%}
-                {%- elif c.type == 'removed' -%}
-                  {%- set ns.lines = ns.lines + ['  was: ' ~ nu.strftime('%H:%M') ~ '-' ~ eind.strftime('%H:%M')
-                        ~ (' · ' ~ c.location if c.location else '')
-                        ~ (' · ' ~ c.teacher if c.teacher else '')] -%}
-                {%- endif -%}
-                {%- if c.type == 'cancelled' -%}
-                  {%- set ns.lines = ns.lines + ['  nu:  vervalt'] -%}
-                {%- elif c.type == 'removed' -%}
-                  {%- set ns.lines = ns.lines + ['  nu:  van het rooster af'] -%}
-                {%- else -%}
-                  {%- set ns.lines = ns.lines + ['  nu:  ' ~ nu.strftime('%H:%M') ~ '-' ~ eind.strftime('%H:%M')
-                        ~ (' · ' ~ c.location if c.location else '')
-                        ~ (' · ' ~ c.teacher if c.teacher else '')] -%}
-                {%- endif -%}
-                {%- if not loop.last -%}
-                  {%- set ns.lines = ns.lines + [''] -%}
+                {%- set vooruit = (nu.date() - now().date()).days -%}
+                {%- if 0 <= vooruit <= limiet -%}
+                  {%- if ns.lines -%}{%- set ns.lines = ns.lines + [''] -%}{%- endif -%}
+                  {%- set kop = labels.get(c.type, c.type) ~ ': ' ~ (c.subject or 'les')
+                        ~ ' (' ~ dagen[nu.weekday()] ~ ' ' ~ nu.day ~ ' ' ~ maanden[nu.month - 1] ~ ')' -%}
+                  {%- set ns.lines = ns.lines + [kop] -%}
+                  {#- c.get('previous'), not c.previous: an `added` change has no
+                      previous version, and attribute access on a missing key
+                      logs a template error for every change on every device. -#}
+                  {%- set vorig = c.get('previous') -%}
+                  {%- if vorig -%}
+                    {%- set was = vorig.start | as_datetime | as_local -%}
+                    {%- set was_eind = vorig.end | as_datetime | as_local -%}
+                    {%- set ns.lines = ns.lines + ['  was: ' ~ was.strftime('%H:%M') ~ '-' ~ was_eind.strftime('%H:%M')
+                          ~ (' · ' ~ vorig.location if vorig.location else '')
+                          ~ (' · ' ~ vorig.teacher if vorig.teacher else '')] -%}
+                  {%- elif c.type == 'removed' -%}
+                    {%- set ns.lines = ns.lines + ['  was: ' ~ nu.strftime('%H:%M') ~ '-' ~ eind.strftime('%H:%M')
+                          ~ (' · ' ~ c.location if c.location else '')
+                          ~ (' · ' ~ c.teacher if c.teacher else '')] -%}
+                  {%- endif -%}
+                  {%- if c.type == 'cancelled' -%}
+                    {%- set ns.lines = ns.lines + ['  nu:  vervalt'] -%}
+                  {%- elif c.type == 'removed' -%}
+                    {%- set ns.lines = ns.lines + ['  nu:  van het rooster af'] -%}
+                  {%- else -%}
+                    {%- set ns.lines = ns.lines + ['  nu:  ' ~ nu.strftime('%H:%M') ~ '-' ~ eind.strftime('%H:%M')
+                          ~ (' · ' ~ c.location if c.location else '')
+                          ~ (' · ' ~ c.teacher if c.teacher else '')] -%}
+                  {%- endif -%}
                 {%- endif -%}
               {%- endfor -%}
               {{ ns.lines | join('\n') }}
               {%- endif -%}
+            data:
+              # Tapping the notification opens that person's own dashboard.
+              # clickAction is the Android companion app, url is iOS; sending
+              # both saves having to know which phone is which.
+              clickAction: "{{ repeat.item.dashboard }}"
+              url: "{{ repeat.item.dashboard }}"
 
 # `queued` rather than `single`: two students on one account poll together, so
 # two events can arrive in the same instant and neither should be dropped.
