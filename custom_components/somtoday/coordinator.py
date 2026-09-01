@@ -33,6 +33,7 @@ from .models import (
     parse_lesson,
     parse_student,
 )
+from .weeks import week_start
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -50,6 +51,26 @@ def refresh_interval(entry: ConfigEntry) -> timedelta:
     """Return the configured poll interval as a ``timedelta``."""
     minutes = int(entry.options.get(CONF_REFRESH_INTERVAL, DEFAULT_REFRESH_INTERVAL))
     return timedelta(minutes=minutes)
+
+
+def fetch_start(today: date) -> date:
+    """Return how far back to fetch the schedule.
+
+    Back to the Monday of the current week, so the week you are in never loses
+    days you have already lived through. A fixed one-day look-back meant that at
+    midnight the day before yesterday simply vanished from the calendar — and a
+    timetable is a record of the week as much as a plan for it. Silently
+    rewriting the part that already happened is worse than fetching a few extra
+    days.
+
+    Never less than ``DAYS_BEHIND``, so on Monday itself the window still
+    reaches back past midnight rather than starting exactly at today.
+
+    This does not affect change notifications: those only ever consider lessons
+    that have not started yet, so days dropping off the back cannot produce a
+    "removed" event.
+    """
+    return min(week_start(today), today - timedelta(days=DAYS_BEHIND))
 
 
 def days_ahead(entry: ConfigEntry) -> int:
@@ -199,7 +220,7 @@ class SomtodayCoordinator(DataUpdateCoordinator[dict[int, StudentData]]):
         already converts it into a retryable failure.
         """
         today = dt_util.now().date()
-        window_start = today - timedelta(days=DAYS_BEHIND)
+        window_start = fetch_start(today)
         window_end = today + timedelta(days=days_ahead(self.config_entry))
 
         try:

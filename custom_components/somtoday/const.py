@@ -79,8 +79,9 @@ DEFAULT_DAYS_AHEAD = 28
 SERVICE_PLANNER_ADD = "planner_add"
 SERVICE_PLANNER_DELETE = "planner_delete"
 
-# Yesterday is kept in the window so a calendar view of "this week" always has
-# the past days of that week available without an extra fetch.
+# Floor for the look-back. The window actually reaches back to the Monday of
+# the current week (see coordinator.window_start); this is only what Monday
+# itself gets, so the calendar never has a completely empty past edge.
 DAYS_BEHIND = 1
 
 # Cap the number of items published as state attributes so the lists stay well

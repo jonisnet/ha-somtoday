@@ -1,7 +1,7 @@
 """Tests for the pure derivations behind the sensors and the calendar."""
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -11,6 +11,7 @@ from custom_components.somtoday.calendar import lesson_to_event
 from custom_components.somtoday.const import HomeworkType, LessonStatus
 from custom_components.somtoday.coordinator import (
     current_lesson,
+    fetch_start,
     next_lesson,
     next_school_day,
     next_test,
@@ -320,3 +321,31 @@ def test_multi_period_lesson_shows_a_range():
         period_end=2,
     )
     assert "Lesuur: 1-2" in lesson_to_event(long_lesson).description
+
+# --------------------------------------------------------------------------
+# How far back the schedule is fetched
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("day", "expected"),
+    [
+        (date(2026, 8, 31), date(2026, 8, 30)),  # Monday: the floor, one day
+        (date(2026, 9, 1), date(2026, 8, 31)),   # Tuesday
+        (date(2026, 9, 3), date(2026, 8, 31)),   # Thursday
+        (date(2026, 9, 4), date(2026, 8, 31)),   # Friday
+        (date(2026, 9, 6), date(2026, 8, 31)),   # Sunday, still that Monday
+    ],
+)
+def test_the_window_reaches_back_to_monday(day, expected):
+    """A fixed one-day look-back made the day before yesterday vanish from the
+    calendar at midnight. A timetable is a record of the week as much as a plan
+    for it, so the week you are in keeps all of its days."""
+    assert fetch_start(day) == expected
+
+
+def test_the_window_never_starts_later_than_yesterday():
+    """Monday must still reach back past midnight, not begin at today."""
+    for offset in range(14):
+        day = date(2026, 8, 31) + timedelta(days=offset)
+        assert fetch_start(day) <= day - timedelta(days=1)

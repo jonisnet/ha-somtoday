@@ -4,6 +4,22 @@ All notable changes to the Somtoday integration are documented here.
 Development happens in beta releases (`X.Y.Z-beta.N`) between occasional real
 releases, where this file is consolidated into one summary per real version.
 
+## 0.1.1
+
+### Fixed
+- **The calendar no longer loses days you have already lived through.** The
+  fetch window looked back a fixed one day, so at midnight the day before
+  yesterday simply vanished. It now reaches back to the Monday of the current
+  week, so the week you are in keeps all of its days and rolls over only when
+  the next week starts. A timetable is a record of the week as much as a plan
+  for it, and quietly rewriting the part that already happened is worse than
+  fetching a few extra days.
+
+  This does not change notifications: change detection has always ignored
+  lessons that have already started, so days dropping off the back of the
+  window could never produce a "removed" message. There are now tests naming
+  that scenario explicitly.
+
 ## 0.1.0
 
 ### Fixed

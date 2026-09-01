@@ -115,10 +115,35 @@ def test_a_removed_lesson_is_reported():
 
 def test_lessons_that_already_started_are_ignored():
     """A lesson in the past cannot usefully change, and the window drops old
-    days as it slides — reporting those would be noise every single day."""
+    days as it slides — reporting those would be noise every single day.
+
+    This is what keeps the notification automation honest: days falling off the
+    back of the fetch window are exactly how a past lesson disappears, and the
+    user must never be told their child's finished lesson was "removed".
+    """
     before = [lesson("past", start=at(1, 8, 30))]
     after = []
     assert diff(before, after) == []
+
+
+def test_a_whole_past_day_dropping_out_of_the_window_is_silent():
+    """What actually happens at midnight when the window moves on.
+
+    NOW is 1 September midday, so these seven lessons on 31 August are wholly
+    in the past — which is the point. A lesson later *today* that disappears is
+    a different matter and does get reported.
+    """
+    gone = [lesson(f"gisteren-{i}", start=at(31, 8 + i, 0, month=8)) for i in range(7)]
+    future = [lesson("morgen", start=at(2, 8, 30))]
+
+    assert diff(gone + future, future) == []
+
+
+def test_a_future_lesson_disappearing_is_still_reported():
+    """The mirror of the test above: the guard is about the past, not about
+    disappearing as such."""
+    later_today = [lesson("straks", start=at(1, 15, 0))]
+    assert [c.type for c in diff(later_today, [])] == [ChangeType.REMOVED]
 
 
 def test_the_newly_revealed_far_edge_is_not_a_pile_of_new_lessons():
