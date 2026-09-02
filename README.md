@@ -203,6 +203,24 @@ pattern. Lower it only if you do not use the normal-week view. That is also why 
 default** — it should be an explicit choice, not something that quietly presents
 a one-week guess as the timetable.
 
+## Get notified when the timetable changes
+
+A blueprint does this for you — pick the phones from a list and it works out
+the rest. No YAML, no service names to type.
+
+[![Import blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fjonisnet%2Fha-somtoday%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fjonisnet%2Fsomtoday_roosterwijziging.yaml)
+
+You only have to answer one question: which phones get the message. Everything
+else has a working default. Step-by-step instructions are in
+[`examples/README.md`](examples/README.md), and the plain YAML version lives in
+[`examples/automations/`](examples/automations/) if you would rather edit the
+wording yourself.
+
+Two things that look like a broken setup but are not: nothing arrives until
+Somtoday actually changes something, and the first check after a Home Assistant
+restart stays quiet on purpose. To see it work straight away, fire the event by
+hand — see [Testing a notification](#testing-a-notification-without-waiting-for-a-real-change).
+
 ## Schedule-change events
 
 Somtoday has no push, so a change is only visible by comparing one poll against
