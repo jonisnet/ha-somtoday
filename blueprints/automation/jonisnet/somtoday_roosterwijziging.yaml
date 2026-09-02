@@ -36,8 +36,9 @@ blueprint:
     dashboard:
       name: 2. Welke pagina gaat open als je op de melding tikt?
       description: >-
-        Vul het adres van de pagina in, beginnend met een schuine streep -
-        bijvoorbeeld /lovelace/school.
+        Kies er een uit de lijst, of typ het adres van je eigen pagina -
+        beginnend met een schuine streep. De lijst bevat alleen voorbeelden;
+        jouw eigen paden heten waarschijnlijk anders.
 
 
         Weet je het adres niet? Open de pagina in je browser en kijk in de
@@ -49,7 +50,13 @@ blueprint:
         standaard-dashboard.
       default: /lovelace/0
       selector:
-        text: {}
+        select:
+          custom_value: true
+          mode: dropdown
+          options:
+            - /lovelace/0
+            - /lovelace/school
+            - /lovelace/gezin
     ontvangers_afwijkend:
       name: 3. Moet iemand naar een ándere pagina? (mag je overslaan)
       description: >-
@@ -72,7 +79,13 @@ blueprint:
         als vraag 2: het adres vanaf de schuine streep.
       default: /lovelace/0
       selector:
-        text: {}
+        select:
+          custom_value: true
+          mode: dropdown
+          options:
+            - /lovelace/0
+            - /lovelace/school
+            - /lovelace/gezin
     dagen_vooruit:
       name: 5. Hoe ver vooruit wil je gewaarschuwd worden? (mag je overslaan)
       description: >-

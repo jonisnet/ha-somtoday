@@ -17,6 +17,9 @@ releases, where this file is consolidated into one summary per real version.
 
 ### Fixed
 - Replaced real teacher abbreviations in the test data with invented ones.
+- **The `future_week` sensors had no name.** Same class of miss as the four
+  before them: a `translation_key` used in code that was never declared, which
+  hassfest does not check. The local validation script does.
 
 ## 0.1.3
 

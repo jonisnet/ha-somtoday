@@ -99,6 +99,9 @@
       "next_week": {
         "name": "Next week"
       },
+      "future_week": {
+        "name": "Week"
+      },
       "upcoming_work": {
         "name": "Upcoming schoolwork"
       },
