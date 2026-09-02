@@ -4,7 +4,7 @@ All notable changes to the Somtoday integration are documented here.
 Development happens in beta releases (`X.Y.Z-beta.N`) between occasional real
 releases, where this file is consolidated into one summary per real version.
 
-## Unreleased
+## 0.1.3
 
 ### Changed
 - **Eight future timetable weeks are now available to dashboard cards.** Each
