@@ -68,13 +68,18 @@ DEFAULT_REFRESH_INTERVAL = 30
 # fetch — but this is what the sensors and the cached calendar view cover.
 CONF_DAYS_AHEAD = "days_ahead"
 CONF_PLANNER_ALLOWED_USERS = "planner_allowed_users"
-DAYS_AHEAD_OPTIONS = (7, 14, 21, 28)
+DAYS_AHEAD_OPTIONS = (7, 14, 21, 28, 56)
 # Four weeks by default. The normal week is derived from the pattern across the
 # weeks actually held (see weeks.py), so the window doubles as the sample size:
 # at two weeks a recurring slot is barely distinguishable from a coincidence,
 # at four it is a pattern. Fetching more costs one extra page or two per poll,
 # which is cheap next to publishing a base week nobody should trust.
-DEFAULT_DAYS_AHEAD = 28
+DEFAULT_DAYS_AHEAD = 56
+
+# The Lovelace card can browse eight concrete calendar weeks ahead. From an
+# arbitrary day in the current week, 63 days covers the Sunday of that eighth
+# future week as well as the eight-week (56-day) option itself.
+MIN_CARD_SCHEDULE_DAYS = 63
 
 SERVICE_PLANNER_ADD = "planner_add"
 SERVICE_PLANNER_DELETE = "planner_delete"

@@ -7,6 +7,10 @@ releases, where this file is consolidated into one summary per real version.
 ## Unreleased
 
 ### Changed
+- **Eight future timetable weeks are now available to dashboard cards.** Each
+  week is exposed separately to keep entity attributes comfortably below Home
+  Assistant's size limits. Existing entries with a shorter fetch option are
+  transparently given the full eight-week card window.
 - **The example notification only covers the next few days now**, and links
   each recipient to their own dashboard. Two days ahead normally; Thursday and
   Friday reach through to Monday, because a Friday change to Monday's timetable
@@ -18,9 +22,6 @@ releases, where this file is consolidated into one summary per real version.
   integration: the event reports every change it can see, and how far ahead is
   worth interrupting someone for is a question about people, not about data.
   Adjusting it needs no new release.
-
-  Only `examples/` changed, so the installed component is byte-identical to
-  0.1.2 and there is no release for this.
 
 ## 0.1.2
 

@@ -36,6 +36,9 @@
       "next_week": {
         "default": "mdi:calendar-arrow-right"
       },
+      "future_week": {
+        "default": "mdi:calendar-multiple"
+      },
       "upcoming_work": {
         "default": "mdi:clipboard-list-outline"
       },

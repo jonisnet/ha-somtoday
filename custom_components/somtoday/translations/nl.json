@@ -67,7 +67,8 @@
         "7": "1 week",
         "14": "2 weken",
         "21": "3 weken",
-        "28": "4 weken"
+        "28": "4 weken",
+        "56": "8 weken"
       }
     }
   },
@@ -98,6 +99,9 @@
       },
       "next_week": {
         "name": "Volgende week"
+      },
+      "future_week": {
+        "name": "Toekomstige week"
       },
       "upcoming_work": {
         "name": "Aankomend schoolwerk"

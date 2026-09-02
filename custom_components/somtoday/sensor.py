@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any
 
 from homeassistant.components.sensor import (
@@ -57,6 +57,10 @@ async def async_setup_entry(
                 SomtodayTodaySensor(coordinator, student_id),
                 SomtodayPlannerSensor(entry, student_id),
                 SomtodayNextWeekSensor(coordinator, student_id),
+                *(
+                    SomtodayFutureWeekSensor(coordinator, student_id, week_offset)
+                    for week_offset in range(2, 9)
+                ),
                 SomtodayUpcomingWorkSensor(coordinator, student_id),
                 SomtodayOpenHomeworkSensor(coordinator, student_id),
                 SomtodayNextTestSensor(coordinator, student_id),
@@ -112,6 +116,83 @@ class SomtodayPlannerSensor(SomtodayStudentEntity, SensorEntity):
             item
             for item in self._entry.runtime_data.planner.items
             if item["student_id"] == self._student_id
+        ]
+
+
+class SomtodayFutureWeekSensor(SomtodayStudentEntity, SensorEntity):
+    """One concrete future calendar week for dashboard browsing."""
+
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _unrecorded_attributes = frozenset({"days"})
+
+    def __init__(
+        self,
+        coordinator: SomtodayCoordinator,
+        student_id: int,
+        week_offset: int,
+    ) -> None:
+        """Initialise a future-week sensor at ``week_offset`` weeks ahead."""
+        super().__init__(coordinator, student_id, f"future_week_{week_offset}")
+        self._week_offset = week_offset
+        self._attr_translation_key = "future_week"
+
+    @property
+    def native_value(self) -> int | None:
+        """Return the number of lessons in this future week."""
+        return len(self._lessons) if self.student_data is not None else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return this future week's lessons grouped by day."""
+        monday = self._monday
+        days = []
+        for offset in range(7):
+            day = monday + timedelta(days=offset)
+            lessons = [
+                lesson
+                for lesson in self._lessons
+                if dt_util.as_local(lesson.start).date() == day
+            ]
+            if lessons:
+                attrs = _day_attributes(lessons)
+                days.append(
+                    {
+                        "date": day.isoformat(),
+                        "lessons": attrs.get("lessons", []),
+                        "missing": [],
+                    }
+                )
+        return {
+            "student_id": self._student_id,
+            "week_offset": self._week_offset,
+            "week_start": monday.isoformat(),
+            "week_number": monday.isocalendar().week,
+            "lesson_count": len(self._lessons),
+            "days": days,
+        }
+
+    @property
+    def _monday(self) -> date:
+        today = dt_util.now().date()
+        return (
+            today
+            - timedelta(days=today.weekday())
+            + timedelta(weeks=self._week_offset)
+        )
+
+    @property
+    def _lessons(self) -> list[Lesson]:
+        data = self.student_data
+        if data is None:
+            return []
+        monday = self._monday
+        following_monday = monday + timedelta(days=7)
+        return [
+            lesson
+            for lesson in data.lessons
+            if monday
+            <= dt_util.as_local(lesson.start).date()
+            < following_monday
         ]
 
 
@@ -204,6 +285,7 @@ class SomtodayNextWeekSensor(SomtodayStudentEntity, SensorEntity):
                 )
         return {
             "student_id": self._student_id,
+            "week_offset": 1,
             "week_start": monday.isoformat(),
             "week_number": monday.isocalendar().week,
             "lesson_count": len(self._lessons),

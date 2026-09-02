@@ -136,9 +136,10 @@ your Somtoday password.
 
 - **Refresh interval** — 15 minutes to 4 hours, default 30. A timetable rarely
   changes faster than that.
-- **Days of schedule to fetch** — 1 to 4 weeks, default 4. This is what the
-  sensors and the cached calendar cover; the calendar can still show any period,
-  it just fetches those on demand.
+- **Days of schedule to fetch** — 1 to 8 weeks, default 8. The integration
+  always keeps eight weeks available for compatible dashboard cards. This is
+  what the sensors and the cached calendar cover; the calendar can still show
+  any period, it just fetches those on demand.
 
 ## Entities
 

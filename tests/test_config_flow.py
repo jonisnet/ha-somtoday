@@ -313,15 +313,14 @@ async def test_options_flow(hass, setup_integration):
         CONF_PLANNER_ALLOWED_USERS: [],
     }
 
-async def test_options_default_to_the_four_week_window(hass, setup_integration):
-    """Four weeks, because the normal week is derived from the weeks held —
-    the window doubles as the sample size for that derivation."""
+async def test_options_default_to_the_eight_week_window(hass, setup_integration):
+    """Eight weeks support the dashboard's future-week browser."""
     result = await hass.config_entries.options.async_init(setup_integration.entry_id)
     schema = result["data_schema"].schema
     default = next(
         key.default() for key in schema if key == CONF_DAYS_AHEAD
     )
-    assert default == "28"
+    assert default == "56"
 
 
 async def test_a_choice_that_no_longer_exists_falls_back(hass, config_entry, mock_api):
@@ -336,4 +335,4 @@ async def test_a_choice_that_no_longer_exists_falls_back(hass, config_entry, moc
     result = await hass.config_entries.options.async_init(config_entry.entry_id)
     schema = result["data_schema"].schema
     default = next(key.default() for key in schema if key == CONF_DAYS_AHEAD)
-    assert default == "28"
+    assert default == "56"

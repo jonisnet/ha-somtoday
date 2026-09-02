@@ -24,6 +24,7 @@ from .const import (
     DEFAULT_REFRESH_INTERVAL,
     DOMAIN,
     EVENT_SCHEDULE_CHANGED,
+    MIN_CARD_SCHEDULE_DAYS,
 )
 from .models import (
     HomeworkItem,
@@ -75,7 +76,8 @@ def fetch_start(today: date) -> date:
 
 def days_ahead(entry: ConfigEntry) -> int:
     """Return how many days of schedule to pre-fetch."""
-    return int(entry.options.get(CONF_DAYS_AHEAD, DEFAULT_DAYS_AHEAD))
+    configured = int(entry.options.get(CONF_DAYS_AHEAD, DEFAULT_DAYS_AHEAD))
+    return max(configured, MIN_CARD_SCHEDULE_DAYS)
 
 
 # --------------------------------------------------------------------------

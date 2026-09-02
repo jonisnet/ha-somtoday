@@ -47,12 +47,22 @@ async def test_all_sensors_are_created(hass, setup_integration):
         "today",
         "planner",
         "next_week",
+        "future_week_2",
+        "future_week_8",
         "upcoming_work",
         "open_homework",
         "next_test",
         "last_update",
     ):
         assert hass.states.get(entity_id(hass, key)) is not None
+
+
+async def test_future_week_sensors_expose_their_offset(hass, setup_integration):
+    """Each future week is separately discoverable by the dashboard card."""
+    second = hass.states.get(entity_id(hass, "future_week_2"))
+    eighth = hass.states.get(entity_id(hass, "future_week_8"))
+    assert second.attributes["week_offset"] == 2
+    assert eighth.attributes["week_offset"] == 8
 
 
 async def test_current_lesson_in_progress(hass, config_entry, mock_api):
