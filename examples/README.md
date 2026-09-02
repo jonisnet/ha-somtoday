@@ -12,13 +12,34 @@ Entity ids follow your Home Assistant language. On a Dutch instance they read
 
 `notify.mobile_app_<device>` also needs replacing with your own notify service.
 
-## Blueprint
+## Blueprint (start here)
 
-The notification is also available as a blueprint, which is the easier route:
-it asks which phones to notify and where each of them should land, and works
-out the notify service names from the devices you pick.
+The notification is available as a blueprint, which is the easy route: you pick
+the phones from a list and it works out the rest. No YAML, no service names to
+type.
 
 [![Import blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fjonisnet%2Fha-somtoday%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fjonisnet%2Fsomtoday_roosterwijziging.yaml)
+
+**Setting it up, step by step:**
+
+1. Click the button above, then **Preview** and **Import blueprint**.
+2. Go to **Settings → Automations & scenes → Blueprints** and click
+   **Somtoday - melding bij roosterwijziging**.
+3. **Which phones get the message?** Pick them from the list. Only devices with
+   the Home Assistant app on them appear there.
+4. **Which page opens when you tap the message?** Open the page you want in
+   your browser and copy everything after the web address — if the bar reads
+   `home.example.nl/lovelace/school`, you enter `/lovelace/school`. Not sure?
+   Leave `/lovelace/0`; that is your default dashboard.
+5. Questions 3 to 6 can all be skipped. They are there for households where not
+   everyone may open the same page, where you want a different number of days'
+   warning, or where more than one child is in Somtoday.
+6. **Save**, give it a name, and you are done.
+
+Nothing will arrive until Somtoday actually changes something — and the very
+first check after a Home Assistant restart stays quiet on purpose. To see it
+work right away, fire the event by hand: see *Testing a notification without
+waiting for a real change* in the main README.
 
 The YAML automation below does the same thing and is the place to look if you
 want to change the wording or the filtering by hand.

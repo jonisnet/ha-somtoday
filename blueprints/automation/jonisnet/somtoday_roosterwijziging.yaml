@@ -1,55 +1,64 @@
 blueprint:
-  name: Somtoday - roosterwijziging melden
+  name: Somtoday - melding bij roosterwijziging
   description: >-
-    Stuurt een melding zodra Somtoday het rooster wijzigt: een les die vervalt,
-    verplaatst wordt, een ander lokaal of een andere docent krijgt, of die wordt
-    ingelast of van het rooster gehaald. Elke wijziging wordt getoond als
-    "was" en "nu", zodat je in één oogopslag ziet wat er veranderd is.
+    Stuurt een bericht naar de telefoons die je kiest zodra er iets aan het
+    rooster verandert: een les die uitvalt, verschuift, een ander lokaal of een
+    andere docent krijgt, of die erbij komt of verdwijnt. Je ziet steeds wat het
+    wás en wat het nú is.
 
-    Wijzigingen komen gebundeld binnen: valt een hele dag uit, dan is dat één
-    melding en geen zeven. Tikken op de melding opent het dashboard dat je per
-    ontvanger opgeeft, zodat iedereen op een pagina landt waar hij ook echt bij
-    mag.
 
-    Wat de integratie zelf al wegfiltert, dus waar deze blueprint niets mee
-    hoeft: lessen die al begonnen zijn, de dag die net aan de verre kant van het
-    ophaalvenster verschijnt, en een dag waarvan nog helemaal niets bekend was -
-    dat laatste is de school die het rooster publiceert, niet die het wijzigt.
+    **Wat je nodig hebt:** de Somtoday-integratie geïnstalleerd en ingesteld, en
+    de Home Assistant-app op de telefoons die bericht moeten krijgen.
 
-    Na een herstart van Home Assistant blijft de eerste controle stil. Het
-    vorige rooster staat alleen in het geheugen, dus anders zou elke herstart
-    lijken alsof het hele rooster net verschenen is.
+
+    **Wat je moet invullen:** alleen de eerste twee vragen zijn verplicht - wie
+    er bericht krijgt, en welke pagina opengaat als je op de melding tikt. De
+    rest mag je overslaan.
+
+
+    Goed om te weten: valt een hele dag uit, dan krijg je één bericht en niet
+    zeven. En na een herstart van Home Assistant blijft het de eerste keer stil,
+    anders zou elke herstart lijken alsof het hele rooster net veranderd was.
   domain: automation
   source_url: https://github.com/jonisnet/ha-somtoday/blob/main/blueprints/automation/jonisnet/somtoday_roosterwijziging.yaml
   input:
     ontvangers:
-      name: Toestellen
+      name: 1. Wie krijgt de melding?
       description: >-
-        Welke telefoons of tablets (met de HA Companion App) de melding krijgen.
-        Kies ze uit de lijst - de notify-service wordt automatisch van de
-        apparaatnaam afgeleid.
+        Kies de telefoons of tablets die bericht moeten krijgen. Alleen
+        apparaten met de Home Assistant-app erop staan in de lijst. Je mag er
+        meerdere kiezen.
       selector:
         device:
           filter:
             integration: mobile_app
           multiple: true
     dashboard:
-      name: Dashboard voor deze toestellen
+      name: 2. Welke pagina gaat open als je op de melding tikt?
       description: >-
-        Waar de melding naartoe springt als je erop tikt, bijvoorbeeld
-        /lovelace/school of /dashboard-gezin/0. Home Assistant heeft geen
-        keuzelijst voor dashboards, dus dit is een tekstveld: open het
-        dashboard in je browser en neem het pad over uit de adresbalk, vanaf de
-        eerste schuine streep.
+        Vul het adres van de pagina in, beginnend met een schuine streep -
+        bijvoorbeeld /lovelace/school.
+
+
+        Weet je het adres niet? Open de pagina in je browser en kijk in de
+        adresbalk: alles achter het webadres is wat je hier nodig hebt. Staat er
+        home.jouwnaam.nl/lovelace/school, dan vul je /lovelace/school in.
+
+
+        Geen idee, of maakt het niet uit? Laat /lovelace/0 staan. Dat is je
+        standaard-dashboard.
       default: /lovelace/0
       selector:
         text: {}
     ontvangers_afwijkend:
-      name: Toestellen met een ander dashboard (optioneel)
+      name: 3. Moet iemand naar een ándere pagina? (mag je overslaan)
       description: >-
-        Voor wie ergens anders moet landen - bijvoorbeeld iemand die alleen bij
-        zijn eigen dashboard mag. Laat leeg als iedereen naar hetzelfde
-        dashboard gaat.
+        Alleen invullen als niet iedereen bij dezelfde pagina mag of moet
+        uitkomen - bijvoorbeeld iemand die alleen zijn eigen dashboard mag zien.
+
+
+        Gaat iedereen naar dezelfde pagina? Laat dit leeg en sla ook vraag 4
+        over.
       default: []
       selector:
         device:
@@ -57,21 +66,23 @@ blueprint:
             integration: mobile_app
           multiple: true
     dashboard_afwijkend:
-      name: Dashboard voor die toestellen
-      description: Alleen van belang als je hierboven toestellen hebt gekozen.
+      name: 4. Welke pagina voor die mensen?
+      description: >-
+        Alleen van belang als je bij vraag 3 iemand hebt gekozen. Werkt hetzelfde
+        als vraag 2: het adres vanaf de schuine streep.
       default: /lovelace/0
       selector:
         text: {}
     dagen_vooruit:
-      name: Hoeveel dagen vooruit melden
+      name: 5. Hoe ver vooruit wil je gewaarschuwd worden? (mag je overslaan)
       description: >-
-        Alleen wijzigingen binnen dit aantal dagen leveren een melding op. Een
-        les die over drie weken verschuift hoeft niemand 's avonds te weten.
+        Bij 2 dagen hoor je alleen over vandaag en morgen. Een les die over drie
+        weken verschuift stoort je dan niet 's avonds.
 
-        Het weekend wordt automatisch overbrugd: valt het einde van het venster
-        op zaterdag of zondag, dan loopt het door tot en met maandag. Een
-        wijziging voor maandag is juist op donderdag en vrijdag het meest de
-        moeite waard.
+
+        Het weekend wordt automatisch overbrugd: op donderdag en vrijdag loopt
+        het door tot en met maandag, zodat je een wijziging voor maandag nog op
+        vrijdag te horen krijgt.
       default: 2
       selector:
         number:
@@ -81,10 +92,14 @@ blueprint:
           mode: slider
           unit_of_measurement: dagen
     leerling:
-      name: Alleen deze leerling (optioneel)
+      name: 6. Over welk kind? (mag je overslaan)
       description: >-
-        Bij een ouderaccount met meerdere kinderen: kies het Somtoday-apparaat
-        van één kind om alleen daarover te melden. Laat leeg voor alle kinderen.
+        Heb je één kind in Somtoday staan, laat dit dan leeg.
+
+
+        Bij meerdere kinderen kun je er hier één kiezen; deze automatisering gaat
+        dan alleen over dat kind. Wil je van allebei bericht, laat het leeg - of
+        maak twee automatiseringen als ze naar verschillende telefoons moeten.
       default: []
       selector:
         device:
