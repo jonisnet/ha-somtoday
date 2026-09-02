@@ -219,14 +219,14 @@ cancelled_count: 1
 changes:
   - type: cancelled          # or reinstated / moved / room_changed /
     subject: wiskunde        # teacher_changed / added / removed
-    teacher: tooj
+    teacher: abc
     location: "204"
     start: "2026-09-02T13:45:00+02:00"
     end: "2026-09-02T14:30:00+02:00"
     period_start: 7
     cancelled: true
     previous:                # the same fields, as they were before
-      teacher: tooj
+      teacher: abc
       location: "204"
       start: "2026-09-02T13:45:00+02:00"
       end: "2026-09-02T14:30:00+02:00"
@@ -267,14 +267,14 @@ cancelled_count: 1
 changes:
   - type: cancelled
     subject: wiskunde
-    teacher: tooj
+    teacher: abc
     location: "204"
     start: "2026-09-02T13:45:00+02:00"
     end: "2026-09-02T14:30:00+02:00"
     period_start: 7
     cancelled: true
     previous:
-      teacher: tooj
+      teacher: abc
       location: "204"
       start: "2026-09-02T13:45:00+02:00"
       end: "2026-09-02T14:30:00+02:00"
@@ -282,14 +282,14 @@ changes:
       cancelled: false
   - type: room_changed
     subject: Engelse taal
-    teacher: cecb
+    teacher: def
     location: "118"
     start: "2026-09-02T11:45:00+02:00"
     end: "2026-09-02T12:30:00+02:00"
     period_start: 5
     cancelled: false
     previous:
-      teacher: cecb
+      teacher: def
       location: "203"
       start: "2026-09-02T11:45:00+02:00"
       end: "2026-09-02T12:30:00+02:00"
