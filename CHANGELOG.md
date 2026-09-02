@@ -4,6 +4,20 @@ All notable changes to the Somtoday integration are documented here.
 Development happens in beta releases (`X.Y.Z-beta.N`) between occasional real
 releases, where this file is consolidated into one summary per real version.
 
+## Unreleased
+
+### Added
+- **A blueprint for the schedule-change notification.** Phones are picked from
+  a searchable device list and the notify service names are derived from them,
+  so nobody has to type `notify.mobile_app_...` by hand — which is exactly
+  where the plain YAML version kept going wrong. Two groups of recipients can
+  each get their own dashboard to land on, the day window is a slider that
+  still bridges the weekend, and a parent account can limit it to one child.
+  Home Assistant has no dashboard picker, so those paths stay text fields.
+
+### Fixed
+- Replaced real teacher abbreviations in the test data with invented ones.
+
 ## 0.1.3
 
 ### Changed

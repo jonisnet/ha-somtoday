@@ -12,6 +12,17 @@ Entity ids follow your Home Assistant language. On a Dutch instance they read
 
 `notify.mobile_app_<device>` also needs replacing with your own notify service.
 
+## Blueprint
+
+The notification is also available as a blueprint, which is the easier route:
+it asks which phones to notify and where each of them should land, and works
+out the notify service names from the devices you pick.
+
+[![Import blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fjonisnet%2Fha-somtoday%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fjonisnet%2Fsomtoday_roosterwijziging.yaml)
+
+The YAML automation below does the same thing and is the place to look if you
+want to change the wording or the filtering by hand.
+
 ## Automations
 
 | File | What it does |

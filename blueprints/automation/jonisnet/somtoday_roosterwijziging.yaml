@@ -1,0 +1,229 @@
+blueprint:
+  name: Somtoday - roosterwijziging melden
+  description: >-
+    Stuurt een melding zodra Somtoday het rooster wijzigt: een les die vervalt,
+    verplaatst wordt, een ander lokaal of een andere docent krijgt, of die wordt
+    ingelast of van het rooster gehaald. Elke wijziging wordt getoond als
+    "was" en "nu", zodat je in één oogopslag ziet wat er veranderd is.
+
+    Wijzigingen komen gebundeld binnen: valt een hele dag uit, dan is dat één
+    melding en geen zeven. Tikken op de melding opent het dashboard dat je per
+    ontvanger opgeeft, zodat iedereen op een pagina landt waar hij ook echt bij
+    mag.
+
+    Wat de integratie zelf al wegfiltert, dus waar deze blueprint niets mee
+    hoeft: lessen die al begonnen zijn, de dag die net aan de verre kant van het
+    ophaalvenster verschijnt, en een dag waarvan nog helemaal niets bekend was -
+    dat laatste is de school die het rooster publiceert, niet die het wijzigt.
+
+    Na een herstart van Home Assistant blijft de eerste controle stil. Het
+    vorige rooster staat alleen in het geheugen, dus anders zou elke herstart
+    lijken alsof het hele rooster net verschenen is.
+  domain: automation
+  source_url: https://github.com/jonisnet/ha-somtoday/blob/main/blueprints/automation/jonisnet/somtoday_roosterwijziging.yaml
+  input:
+    ontvangers:
+      name: Toestellen
+      description: >-
+        Welke telefoons of tablets (met de HA Companion App) de melding krijgen.
+        Kies ze uit de lijst - de notify-service wordt automatisch van de
+        apparaatnaam afgeleid.
+      selector:
+        device:
+          filter:
+            integration: mobile_app
+          multiple: true
+    dashboard:
+      name: Dashboard voor deze toestellen
+      description: >-
+        Waar de melding naartoe springt als je erop tikt, bijvoorbeeld
+        /lovelace/school of /dashboard-gezin/0. Home Assistant heeft geen
+        keuzelijst voor dashboards, dus dit is een tekstveld: open het
+        dashboard in je browser en neem het pad over uit de adresbalk, vanaf de
+        eerste schuine streep.
+      default: /lovelace/0
+      selector:
+        text: {}
+    ontvangers_afwijkend:
+      name: Toestellen met een ander dashboard (optioneel)
+      description: >-
+        Voor wie ergens anders moet landen - bijvoorbeeld iemand die alleen bij
+        zijn eigen dashboard mag. Laat leeg als iedereen naar hetzelfde
+        dashboard gaat.
+      default: []
+      selector:
+        device:
+          filter:
+            integration: mobile_app
+          multiple: true
+    dashboard_afwijkend:
+      name: Dashboard voor die toestellen
+      description: Alleen van belang als je hierboven toestellen hebt gekozen.
+      default: /lovelace/0
+      selector:
+        text: {}
+    dagen_vooruit:
+      name: Hoeveel dagen vooruit melden
+      description: >-
+        Alleen wijzigingen binnen dit aantal dagen leveren een melding op. Een
+        les die over drie weken verschuift hoeft niemand 's avonds te weten.
+
+        Het weekend wordt automatisch overbrugd: valt het einde van het venster
+        op zaterdag of zondag, dan loopt het door tot en met maandag. Een
+        wijziging voor maandag is juist op donderdag en vrijdag het meest de
+        moeite waard.
+      default: 2
+      selector:
+        number:
+          min: 0
+          max: 14
+          step: 1
+          mode: slider
+          unit_of_measurement: dagen
+    leerling:
+      name: Alleen deze leerling (optioneel)
+      description: >-
+        Bij een ouderaccount met meerdere kinderen: kies het Somtoday-apparaat
+        van één kind om alleen daarover te melden. Laat leeg voor alle kinderen.
+      default: []
+      selector:
+        device:
+          filter:
+            integration: somtoday
+          multiple: false
+
+triggers:
+  - trigger: event
+    event_type: somtoday_schedule_changed
+
+variables:
+  apparaten: !input ontvangers
+  pad: !input dashboard
+  apparaten_afwijkend: !input ontvangers_afwijkend
+  pad_afwijkend: !input dashboard_afwijkend
+  dagen: !input dagen_vooruit
+  leerling_apparaat: !input leerling
+
+  # Elke ontvanger als {service, dashboard}. De notify-service van de Companion
+  # App heet naar de apparaatnaam, dus die kan hieruit afgeleid worden - zo
+  # hoeft niemand servicenamen over te typen.
+  ontvangers_lijst: >-
+    {% set ns = namespace(items=[]) %}
+    {% for d in apparaten %}
+      {% set ns.items = ns.items + [{
+        'service': 'notify.mobile_app_' ~ (device_attr(d, 'name') | slugify),
+        'dashboard': pad }] %}
+    {% endfor %}
+    {% for d in apparaten_afwijkend %}
+      {% set ns.items = ns.items + [{
+        'service': 'notify.mobile_app_' ~ (device_attr(d, 'name') | slugify),
+        'dashboard': pad_afwijkend }] %}
+    {% endfor %}
+    {{ ns.items }}
+
+  # Hoeveel dagen vooruit er gemeld wordt, met het weekend overbrugd: eindigt
+  # het venster op zaterdag of zondag, dan loopt het door tot maandag.
+  limiet: >-
+    {% set wd = now().weekday() %}
+    {% set basis = dagen | int %}
+    {% set naar_maandag = (7 - wd) % 7 %}
+    {% if ((wd + basis) % 7) in [5, 6] and naar_maandag > basis %}
+      {{ naar_maandag }}
+    {% else %}
+      {{ basis }}
+    {% endif %}
+
+  # De wijzigingen die binnen dat venster vallen. Eén keer bepaald, zodat de
+  # conditie, de titel en het bericht gegarandeerd over dezelfde set gaan.
+  relevant: >-
+    {% set ns = namespace(items=[]) %}
+    {% for c in trigger.event.data.changes %}
+      {% if 0 <= ((c.start | as_datetime | as_local).date() - now().date()).days <= (limiet | int) %}
+        {% set ns.items = ns.items + [c] %}
+      {% endif %}
+    {% endfor %}
+    {{ ns.items }}
+
+conditions:
+  # Zwijgen als elke wijziging buiten het venster valt; anders zou er een lege
+  # melding uitgaan over iets dat weken weg is.
+  - condition: template
+    value_template: "{{ relevant | count > 0 }}"
+  # En zwijgen over andere kinderen, als er één gekozen is.
+  - condition: template
+    value_template: >-
+      {{ not leerling_apparaat
+         or trigger.event.data.device_id == leerling_apparaat }}
+
+actions:
+  - repeat:
+      for_each: "{{ ontvangers_lijst }}"
+      sequence:
+        - action: "{{ repeat.item.service }}"
+          data:
+            title: >-
+              {%- set n = relevant | count -%}
+              {%- set weg = relevant | selectattr('type', 'eq', 'cancelled') | list | count -%}
+              {%- if n == 1 -%}
+                Roosterwijziging
+              {%- elif weg == n -%}
+                {{ n }} lessen vervallen
+              {%- else -%}
+                {{ n }} roosterwijzigingen
+              {%- endif -%}
+            # Regel voor regel opgebouwd en daarna samengevoegd: YAML-folding en
+            # Jinja-inspringing werken elkaar tegen en maken van doorlopende
+            # tekst een rafelige melding op een telefoon.
+            message: >-
+              {%- set labels = {
+                'cancelled': 'Vervalt', 'reinstated': 'Gaat toch door',
+                'moved': 'Verplaatst', 'room_changed': 'Ander lokaal',
+                'teacher_changed': 'Andere docent', 'added': 'Nieuwe les',
+                'removed': 'Van rooster af' } -%}
+              {%- set dagnamen = ['maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag','zondag'] -%}
+              {%- set maanden = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'] -%}
+              {%- set ns = namespace(lines=[]) -%}
+              {%- for c in relevant -%}
+                {%- set nu = c.start | as_datetime | as_local -%}
+                {%- set eind = c.end | as_datetime | as_local -%}
+                {%- if ns.lines -%}{%- set ns.lines = ns.lines + [''] -%}{%- endif -%}
+                {%- set ns.lines = ns.lines + [
+                      labels.get(c.type, c.type) ~ ': ' ~ (c.subject or 'les')
+                      ~ ' (' ~ dagnamen[nu.weekday()] ~ ' ' ~ nu.day ~ ' ' ~ maanden[nu.month - 1] ~ ')'] -%}
+                {#- c.get('previous'), niet c.previous: een ingelaste les heeft
+                    geen vorige versie, en een ontbrekende sleutel levert in
+                    Home Assistant een template-fout op per wijziging per
+                    toestel - ook als de omringende if het netjes afvangt. -#}
+                {%- set vorig = c.get('previous') -%}
+                {%- if vorig -%}
+                  {%- set was = vorig.start | as_datetime | as_local -%}
+                  {%- set was_eind = vorig.end | as_datetime | as_local -%}
+                  {%- set ns.lines = ns.lines + ['  was: ' ~ was.strftime('%H:%M') ~ '-' ~ was_eind.strftime('%H:%M')
+                        ~ (' · ' ~ vorig.location if vorig.location else '')
+                        ~ (' · ' ~ vorig.teacher if vorig.teacher else '')] -%}
+                {%- elif c.type == 'removed' -%}
+                  {%- set ns.lines = ns.lines + ['  was: ' ~ nu.strftime('%H:%M') ~ '-' ~ eind.strftime('%H:%M')
+                        ~ (' · ' ~ c.location if c.location else '')
+                        ~ (' · ' ~ c.teacher if c.teacher else '')] -%}
+                {%- endif -%}
+                {%- if c.type == 'cancelled' -%}
+                  {%- set ns.lines = ns.lines + ['  nu:  vervalt'] -%}
+                {%- elif c.type == 'removed' -%}
+                  {%- set ns.lines = ns.lines + ['  nu:  van het rooster af'] -%}
+                {%- else -%}
+                  {%- set ns.lines = ns.lines + ['  nu:  ' ~ nu.strftime('%H:%M') ~ '-' ~ eind.strftime('%H:%M')
+                        ~ (' · ' ~ c.location if c.location else '')
+                        ~ (' · ' ~ c.teacher if c.teacher else '')] -%}
+                {%- endif -%}
+              {%- endfor -%}
+              {{ ns.lines | join('\n') }}
+            data:
+              # clickAction is Android, url is iOS. Allebei meesturen scheelt
+              # weten welke telefoon welke is.
+              clickAction: "{{ repeat.item.dashboard }}"
+              url: "{{ repeat.item.dashboard }}"
+
+# `queued`, niet `single`: twee kinderen op één account worden in dezelfde poll
+# opgehaald, dus twee events kunnen op hetzelfde moment binnenkomen.
+mode: queued
+max: 10

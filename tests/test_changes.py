@@ -62,7 +62,7 @@ def test_a_lesson_that_stays_cancelled_is_not_reported_again():
 
 def test_cancelling_outranks_room_and_teacher():
     """A dropped lesson is one piece of news, not three."""
-    before = [lesson("a", start=at(2, 8, 30), location="205", teacher="roze")]
+    before = [lesson("a", start=at(2, 8, 30), location="205", teacher="aaa")]
     after = [
         lesson(
             "a",
@@ -86,8 +86,8 @@ def test_a_moved_lesson_is_reported_with_its_old_time():
 
 
 def test_room_and_teacher_changes_are_separate():
-    before = [lesson("a", start=at(2, 8, 30), location="205", teacher="roze")]
-    after = [lesson("a", start=at(2, 8, 30), location="118", teacher="bent")]
+    before = [lesson("a", start=at(2, 8, 30), location="205", teacher="aaa")]
+    after = [lesson("a", start=at(2, 8, 30), location="118", teacher="bbb")]
 
     assert [c.type for c in diff(before, after)] == [
         ChangeType.ROOM_CHANGED,
@@ -201,8 +201,8 @@ def test_changes_come_back_in_timetable_order():
 
 
 def test_event_payload_shape():
-    before = [lesson("a", start=at(2, 8, 30), location="205", teacher="roze")]
-    after = [lesson("a", start=at(2, 8, 30), location="118", teacher="roze")]
+    before = [lesson("a", start=at(2, 8, 30), location="205", teacher="aaa")]
+    after = [lesson("a", start=at(2, 8, 30), location="118", teacher="aaa")]
 
     data = diff(before, after)[0].as_event_data()
 
