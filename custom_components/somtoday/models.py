@@ -98,6 +98,7 @@ class HomeworkItem:
     description: str | None = None
     raw_kind: str | None = None
     done: bool = False
+    student_ids: frozenset[int] = field(default_factory=frozenset)
 
     @property
     def is_test(self) -> bool:
@@ -215,8 +216,8 @@ def parse_student(payload: dict[str, Any]) -> Student | None:
     )
 
 
-def _lesson_student_ids(payload: dict[str, Any]) -> frozenset[int]:
-    """Return the ids of the students attached to an appointment.
+def _student_ids(payload: dict[str, Any]) -> frozenset[int]:
+    """Return the ids of the students attached to an appointment or homework item.
 
     Empty when Somtoday did not include them — on a single-student account the
     ``leerlingen`` block is often omitted, so an empty set must be read as
@@ -266,7 +267,7 @@ def parse_lesson(payload: dict[str, Any]) -> Lesson | None:
         if isinstance(payload.get("eindLesuur"), int)
         else None,
         title=clean_text(payload.get("titel")),
-        student_ids=_lesson_student_ids(payload),
+        student_ids=_student_ids(payload),
     )
 
 
@@ -329,4 +330,5 @@ def parse_homework(
         description=clean_text(item.get("omschrijving")),
         raw_kind=item.get("huiswerkType"),
         done=_homework_done(payload, student_id),
+        student_ids=_student_ids(payload),
     )

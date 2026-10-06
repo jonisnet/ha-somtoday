@@ -137,12 +137,18 @@ class SomtodayApiClient:
 
         A failure on one variant does not sink the others: partial homework is
         far more useful than none, and the endpoints do fail independently.
+
+        ``student_id`` only filters out work differentiated for someone else.
+        A parent account still gets every child's items back, so each item
+        carries its students under ``additionalObjects.leerlingen`` and the
+        caller has to split them — the same way Somtoday's own app does.
         """
         params: list[tuple[str, str]] = [
             ("begintNaOfOp", start.isoformat()),
             ("additional", "huiswerkgemaakt"),
             ("additional", "swigemaaktVinkjes"),
             ("additional", "lesgroep"),
+            ("additional", "leerlingen"),
         ]
         if student_id is not None:
             params.append(

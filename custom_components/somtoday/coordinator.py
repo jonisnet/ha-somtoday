@@ -278,12 +278,15 @@ class SomtodayCoordinator(DataUpdateCoordinator[dict[int, StudentData]]):
                 for lesson in lessons
                 if not lesson.student_ids or student.student_id in lesson.student_ids
             ]
+            # A parent account gets every child's homework back, whatever the
+            # student filter says; the student list on each item decides.
             homework = [
                 item
                 for raw in await self.client.async_get_homework(
                     today, student.student_id
                 )
                 if (item := parse_homework(raw, student.student_id)) is not None
+                and (not item.student_ids or student.student_id in item.student_ids)
             ]
             result[student.student_id] = StudentData(
                 student=student,
@@ -353,13 +356,17 @@ class SomtodayCoordinator(DataUpdateCoordinator[dict[int, StudentData]]):
         """
         if cached := self._cached_device_ids.get(student_id):
             return cached
-        device = dr.async_get(self.hass).async_get_device(
-            identifiers={(DOMAIN, str(student_id))}
-        )
-        if device is None:
-            return None
-        self._cached_device_ids[student_id] = device.id
-        return device.id
+        registry = dr.async_get(self.hass)
+        identifier = (DOMAIN, str(student_id))
+        # Scoped to this entry: device identifiers are no longer unique across
+        # config entries, which is why ``async_get_device`` is deprecated.
+        for device in dr.async_entries_for_config_entry(
+            registry, self.config_entry.entry_id
+        ):
+            if identifier in device.identifiers:
+                self._cached_device_ids[student_id] = device.id
+                return device.id
+        return None
 
     def _persist_rotated_refresh_token(self) -> None:
         """Write a rotated refresh token back to the config entry.

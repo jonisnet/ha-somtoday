@@ -269,6 +269,18 @@ async def test_homework_merges_all_three_endpoints(session):
     assert len(items) == 3
 
 
+async def test_homework_asks_for_the_student_list(session):
+    """Without it a parent account cannot tell whose homework is whose."""
+    client = _client(session)
+    with aioresponses() as mocked:
+        for url in (HOMEWORK_APPOINTMENT_URL, HOMEWORK_DAY_URL, HOMEWORK_WEEK_URL):
+            mocked.get(url, payload={"items": []}, status=200)
+        await client.async_get_homework(date(2026, 9, 7), payloads.STUDENT_A_ID)
+        params = next(iter(mocked.requests.values()))[0].kwargs["params"]
+
+    assert ("additional", "leerlingen") in params
+
+
 async def test_one_failing_homework_endpoint_does_not_sink_the_others(session):
     """Partial homework beats none — the endpoints fail independently."""
     client = _client(session)

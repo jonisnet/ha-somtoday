@@ -43,6 +43,47 @@ async def test_appointments_are_split_per_student(hass, config_entry, mock_api):
     assert len(data[payloads.STUDENT_B_ID].lessons) == 2
 
 
+async def test_homework_is_split_per_student(hass, config_entry, mock_api):
+    """A parent account gets every child's homework from each call (issue #1)."""
+    mock_api.async_get_students.return_value = payloads.STUDENTS_TWO["items"]
+    mock_api.async_get_homework.return_value = [
+        payloads.homework(800001, student_ids=[payloads.STUDENT_A_ID]),
+        payloads.homework(800002, student_ids=[payloads.STUDENT_B_ID]),
+        payloads.homework(800003, student_ids=[payloads.STUDENT_B_ID]),
+        payloads.homework(
+            800004, student_ids=[payloads.STUDENT_A_ID, payloads.STUDENT_B_ID]
+        ),
+    ]
+    config_entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    data = _coordinator(config_entry).data
+    assert {item.uid for item in data[payloads.STUDENT_A_ID].homework} == {
+        "800001",
+        "800004",
+    }
+    assert {item.uid for item in data[payloads.STUDENT_B_ID].homework} == {
+        "800002",
+        "800003",
+        "800004",
+    }
+
+
+async def test_homework_without_a_student_block_goes_to_everyone(
+    hass, config_entry, mock_api
+):
+    """Never drop homework just because Somtoday left the list out."""
+    mock_api.async_get_students.return_value = payloads.STUDENTS_TWO["items"]
+    config_entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    data = _coordinator(config_entry).data
+    assert len(data[payloads.STUDENT_A_ID].homework) == 1
+    assert len(data[payloads.STUDENT_B_ID].homework) == 1
+
+
 async def test_appointments_without_a_student_block_go_to_everyone(
     hass, config_entry, mock_api
 ):
@@ -186,8 +227,12 @@ async def test_the_event_carries_the_student_device(hass, config_entry, mock_api
     await _coordinator(config_entry).async_refresh()
     await hass.async_block_till_done()
 
-    device = dr.async_get(hass).async_get_device(
-        identifiers={(DOMAIN, str(payloads.STUDENT_A_ID))}
+    device = next(
+        device
+        for device in dr.async_entries_for_config_entry(
+            dr.async_get(hass), config_entry.entry_id
+        )
+        if (DOMAIN, str(payloads.STUDENT_A_ID)) in device.identifiers
     )
     assert events[0].data["device_id"] == device.id
     assert events[0].data["student_id"] == payloads.STUDENT_A_ID

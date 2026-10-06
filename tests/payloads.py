@@ -125,6 +125,7 @@ def homework(
     done: bool | None = None,
     done_for_student: int | None = None,
     with_appointment: bool = True,
+    student_ids: list[int] | None = None,
 ) -> dict[str, Any]:
     """Return a study-guide assignment item.
 
@@ -147,6 +148,11 @@ def homework(
                     },
                 }
             ],
+        }
+    if student_ids is not None:
+        additional["leerlingen"] = {
+            "$type": "LinkableWrapper",
+            "items": [student(sid) for sid in student_ids],
         }
 
     payload: dict[str, Any] = {

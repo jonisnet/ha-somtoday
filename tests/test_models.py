@@ -185,6 +185,15 @@ def test_parse_homework_done_tick_matches_the_right_student():
     assert parse_homework(raw, payloads.STUDENT_B_ID).done is False
 
 
+def test_parse_homework_collects_student_ids():
+    item = parse_homework(payloads.homework(student_ids=[payloads.STUDENT_B_ID]))
+    assert item.student_ids == frozenset({payloads.STUDENT_B_ID})
+
+
+def test_parse_homework_without_student_block_applies_to_everyone():
+    assert parse_homework(payloads.homework()).student_ids == frozenset()
+
+
 def test_parse_homework_without_due_date():
     item = parse_homework(payloads.homework(due=None, with_appointment=False))
     assert item.due is None

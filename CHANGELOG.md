@@ -4,7 +4,7 @@ All notable changes to the Somtoday integration are documented here.
 Development happens in beta releases (`X.Y.Z-beta.N`) between occasional real
 releases, where this file is consolidated into one summary per real version.
 
-## Unreleased
+## 0.1.4
 
 ### Added
 - **A blueprint for the schedule-change notification.** Phones are picked from
@@ -16,6 +16,20 @@ releases, where this file is consolidated into one summary per real version.
   Home Assistant has no dashboard picker, so those paths stay text fields.
 
 ### Fixed
+- **On a parent account every child showed every child's homework**
+  ([#1](https://github.com/jonisnet/ha-somtoday/issues/1)). Somtoday's
+  per-student homework filter only concerns differentiated work; a parent
+  account still gets all children's items back from each call. Every item now
+  carries its students (`additional=leerlingen`) and is only kept for the
+  children it names — the same split Somtoday's own app makes. This fixes
+  `upcoming_work`, `open_homework` and `next_test`. An item that arrives
+  without a student list is kept for everyone, so a single-student account
+  never loses homework over it.
+- **Deprecation warning about `device_registry.async_get_device`**
+  ([#2](https://github.com/jonisnet/ha-somtoday/issues/2)), which stops working
+  in Home Assistant 2027.8. The schedule-change event now looks up the child's
+  device among this entry's own devices, which works on every supported
+  Home Assistant version.
 - Replaced real teacher abbreviations in the test data with invented ones.
 - **The `future_week` sensors had no name.** Same class of miss as the four
   before them: a `translation_key` used in code that was never declared, which
