@@ -56,11 +56,16 @@ want to change the wording or the filtering by hand.
 
 ## Dashboards
 
+For a dashboard, use the **[Somtoday Card](https://github.com/jonisnet/ha-somtoday-card)**:
+it fills itself in and handles several children. The YAML below is plain
+built-in cards — useful to see which data each entity offers, or as a starting
+point without a custom card.
+
 | File | What it shows |
 |---|---|
 | `schedule_calendar.yaml` | The timetable as a calendar card |
 | `somtoday_overzicht.yaml` | Full overview: status, day timetable, next test, homework |
-| `weekrooster_horizontaal.yaml` | **The week as coloured lesson blocks in columns side by side**, wrapping on narrow screens. One card for a sections view |
-| `huiswerk_en_toets.yaml` | **Homework and the next test as coloured blocks**, each expandable to the teacher's full description |
+| `weekrooster_horizontaal.yaml` | The week in columns side by side. Written with inline styling, which Home Assistant's markdown card strips — it renders as a plain list |
+| `huiswerk_en_toets.yaml` | Homework and the next test, each expandable to the teacher's full description. Same caveat about the inline styling |
 | `weekrooster.yaml` | Table-style variant of the week view, plus the derived normal week |
 | `today_overview.yaml` | A simpler variant of the same idea |

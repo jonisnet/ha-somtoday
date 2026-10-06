@@ -38,6 +38,23 @@ in Home Assistant's local `.storage`; nothing is written back to Somtoday.
 One Home Assistant device per student, so a parent account with two children
 gets two clean sets of entities.
 
+## Dashboard card
+
+The integration has its own Lovelace card:
+**[Somtoday Card](https://github.com/jonisnet/ha-somtoday-card)** — a week
+timetable, today and tomorrow, homework and tests, with lessons, homework and
+tests opening in a dialog. Add it to a dashboard and it fills itself in for
+every child on the account; there is nothing to type.
+
+With more than one child it gets a row of buttons per child, and can show every
+child's day side by side.
+
+![Somtoday Card on a wide screen](https://raw.githubusercontent.com/jonisnet/ha-somtoday-card/main/preview/wide-dark.png)
+
+Install it from HACS as a **Dashboard** custom repository:
+`https://github.com/jonisnet/ha-somtoday-card`. All names and lessons in the
+screenshot are fictional.
+
 ## Requirements
 
 - Home Assistant **2024.11.0** or newer.
@@ -329,10 +346,12 @@ including the `notify.` prefix: the example passes it through unchanged.
 
 ## Examples
 
-Ready-made automations and dashboard cards live in
-[`examples/`](examples/) — an evening-before summary, a reminder before the
-first lesson, a cancelled-lesson notification, a test heads-up, a calendar card
-and a combined overview card.
+Ready-made automations live in [`examples/`](examples/) — an evening-before
+summary, a reminder before the first lesson, a cancelled-lesson notification
+and a test heads-up. The dashboard YAML there shows which data each entity
+offers; for an actual dashboard, use the [Somtoday Card](#dashboard-card)
+instead — Home Assistant's markdown card strips the styling those examples
+would need.
 
 ## Known limitations
 
