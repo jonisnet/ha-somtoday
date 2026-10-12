@@ -81,6 +81,16 @@ screenshot are fictional.
 
 ## Configuration
 
+For Chrome and Edge, download the optional
+**[Somtoday Login Helper 0.1.4 (ZIP)](https://github.com/jonisnet/ha-somtoday/releases/download/v0.1.8/Somtoday-Login-Helper-0.1.4.zip)**.
+Extract it and double-click **`INSTALLEREN-WINDOWS.cmd`**; it opens the browser
+page and folder you need. The helper detects only this exact Somtoday callback
+and gives you a **Kopiëren en wissen** button. It uses Manifest V3 and does not
+change or couple itself to the Home Assistant integration. The
+[full guide](login_helper/README.md) covers manual installation, usage,
+permissions and security. The DevTools method below remains available without
+an extension.
+
 Go to **Settings → Devices & services → Add integration** and pick **Somtoday**.
 
 The form shows a link and asks for one thing back:
@@ -98,16 +108,6 @@ to schemes it has no handler for: no error page, no address-bar change, nothing.
 Older browsers showed an "unknown protocol" error; Chrome does not. Pressing
 sign-in again just restarts the whole login, which is why it asks for your
 password a second time.
-
-For Chrome and Edge, download the optional
-**[Somtoday Login Helper 0.1.4 (ZIP)](https://github.com/jonisnet/ha-somtoday/releases/download/v0.1.8/Somtoday-Login-Helper-0.1.4.zip)**.
-Extract it and double-click **`INSTALLEREN-WINDOWS.cmd`**; it opens the browser
-page and folder you need. The helper detects only this exact Somtoday callback
-and gives you a **Kopiëren en wissen** button. It uses Manifest V3 and does not
-change or couple itself to the Home Assistant integration. The
-[full guide](login_helper/README.md) covers manual installation, usage,
-permissions and security. The DevTools method below remains available without
-an extension.
 
 The code is still there, in the redirect Chrome threw away. To read it out:
 
