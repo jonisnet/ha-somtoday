@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="nl">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Somtoday Login Helper</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <main>
+      <p class="eyebrow">Home Assistant</p>
+      <h1>Somtoday Login Helper</h1>
+
+      <section id="waiting" aria-live="polite">
+        <p>Nog geen Somtoday-login gevonden.</p>
+        <ol>
+          <li>Open de inloglink vanuit Home Assistant.</li>
+          <li>Log in bij Somtoday.</li>
+          <li>Open deze helper wanneer er een groen <strong>1</strong>-badge staat.</li>
+        </ol>
+      </section>
+
+      <section id="captured" hidden aria-live="polite">
+        <p class="success">Inlogadres gevonden</p>
+        <p>Plak dit eenmalige adres in het Somtoday-formulier in Home Assistant.</p>
+        <textarea id="redirect" readonly spellcheck="false" aria-label="Somtoday-doorverwijsadres"></textarea>
+        <div class="actions">
+          <button id="copy" type="button">Kopiëren en wissen</button>
+          <button id="clear" class="secondary" type="button">Wissen</button>
+        </div>
+        <p id="status" class="status" role="status"></p>
+      </section>
+
+      <p class="privacy">Alleen tijdelijk in dit browsergeheugen; nooit verzonden of gesynchroniseerd.</p>
+    </main>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>
