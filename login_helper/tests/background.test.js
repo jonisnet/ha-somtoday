@@ -91,10 +91,9 @@ globalThis.chrome = {
 const { EXPIRY_ALARM, STORAGE_KEY } = await import("../background.js");
 await settle();
 
-test("registers a read-only listener for Somtoday main-frame responses only", () => {
+test("registers a read-only listener for every request type on the Somtoday login host", () => {
   assert.deepEqual(calls.filter, {
     urls: ["https://inloggen.somtoday.nl/*"],
-    types: ["main_frame"],
   });
   assert.deepEqual(calls.extraInfo, ["responseHeaders", "extraHeaders"]);
   assert.deepEqual(calls.redirectFilter, calls.filter);
@@ -103,6 +102,8 @@ test("registers a read-only listener for Somtoday main-frame responses only", ()
 
 test("captures a valid Location header, schedules deletion and marks the action", async () => {
   listeners.headers({
+    tabId: 24,
+    type: "xmlhttprequest",
     responseHeaders: [{ name: "Location", value: CALLBACK }],
   });
   await settle();
@@ -117,6 +118,26 @@ test("captures a valid Location header, schedules deletion and marks the action"
   assert.deepEqual(calls.badges.at(-1), { text: "1" });
   assert.deepEqual(calls.titles.at(-1), {
     title: "Somtoday-login gevonden",
+  });
+  assert.deepEqual(calls.tabUpdates.at(-1), {
+    tabId: 24,
+    url: "chrome-extension://test-extension/popup.html",
+  });
+});
+
+test("captures a Wicket Ajax-Location response from a background request", async () => {
+  listeners.headers({
+    tabId: 25,
+    type: "xmlhttprequest",
+    statusCode: 200,
+    responseHeaders: [{ name: "Ajax-Location", value: CALLBACK }],
+  });
+  await settle();
+
+  assert.equal(sessionValues[STORAGE_KEY].redirectUrl, CALLBACK);
+  assert.deepEqual(calls.tabUpdates.at(-1), {
+    tabId: 25,
+    url: "chrome-extension://test-extension/popup.html",
   });
 });
 

@@ -33,6 +33,19 @@ export function findHeader(headers, wantedName) {
 }
 
 /**
+ * Return the callback header used by either a regular HTTP redirect or an
+ * Apache Wicket Ajax redirect. Somtoday's login form is submitted through
+ * Wicket, which can return a 200 response with Ajax-Location instead of a 3xx
+ * response with Location.
+ */
+export function findRedirectHeader(headers) {
+  return (
+    findHeader(headers, "location") ??
+    findHeader(headers, "ajax-location")
+  );
+}
+
+/**
  * Return a validated callback or null.
  *
  * The full URL is kept because Home Assistant performs the authoritative
@@ -63,7 +76,7 @@ export function parseSomtodayCallback(rawValue) {
     parsed.pathname !== CALLBACK_PATH ||
     parsed.username ||
     parsed.password ||
-    parsed.port ||
+    (parsed.port && parsed.port !== "443") ||
     parsed.hash
   ) {
     return null;

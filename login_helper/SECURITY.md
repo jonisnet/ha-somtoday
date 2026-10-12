@@ -8,8 +8,9 @@ like a password until Home Assistant has exchanged it.
 The Manifest V3 permissions are deliberately narrow:
 
 - `host_permissions` contains only `https://inloggen.somtoday.nl/*`.
-- `webRequest` reads redirect targets and response headers for top-level
-  navigations on that host.
+- `webRequest` reads redirect targets and response headers for requests on
+  that host. This includes background fetch/XHR requests because Somtoday does
+  not always perform the login as a page navigation.
   It does not block, alter or redirect traffic and does not request the MV2
   `webRequestBlocking` capability.
 - `storage` keeps one validated redirect in `chrome.storage.session`, which is
@@ -26,10 +27,11 @@ permission and falls back to selecting the text for manual copying.
 
 A response is retained only when all of these conditions hold:
 
-1. the response belongs to a top-level request on
-   `https://inloggen.somtoday.nl/*`;
-2. its redirect target or `Location` header is a valid URL with the exact scheme, host and path
-   `somtoday://nl.topicus.somtoday.leerling/oauth/callback`;
+1. the response belongs to a request on `https://inloggen.somtoday.nl/*`;
+2. its redirect target, `Location` header or Wicket `Ajax-Location` header is a
+   valid URL with the exact scheme, host and path
+   `somtoday://nl.topicus.somtoday.leerling/oauth/callback`, with either no
+   explicit port or only the default HTTPS port `443` returned by Somtoday;
 3. it contains exactly one non-empty `code`, at most one valid `state` query
    parameter, no credentials and no fragment.
 

@@ -4,6 +4,20 @@ All notable changes to the Somtoday integration are documented here.
 Development happens in beta releases (`X.Y.Z-beta.N`) between occasional real
 releases, where this file is consolidated into one summary per real version.
 
+## 0.1.8
+
+### Fixed
+- **Somtoday Login Helper 0.1.4 accepts the callback produced by the live login.**
+  Somtoday appends the explicit default port `:443` to the custom callback URL.
+  Version 0.1.3 observed the redirect but rejected that otherwise valid URL.
+  The helper now accepts only no explicit port or exactly port `443`; every
+  other port remains rejected.
+- **The listener also observes every request type on the login host.** This
+  keeps the helper compatible if Somtoday submits a future login with fetch or
+  XHR instead of a document request.
+- **The browser smoke test now uses the callback shape captured from the live
+  Somtoday login**, including its explicit port and document redirect.
+
 ## 0.1.7
 
 ### Fixed
