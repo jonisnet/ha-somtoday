@@ -5,6 +5,7 @@ import {
   CAPTURE_TTL_MS,
   createCapture,
   findHeader,
+  findRedirectHeader,
   isFreshCapture,
   parseSomtodayCallback,
 } from "../oauth_redirect.js";
@@ -31,6 +32,16 @@ test("accepts Somtoday callbacks that omit state", () => {
   });
 });
 
+test("accepts the explicit port 443 returned by the live Somtoday login", () => {
+  const callback =
+    "somtoday://nl.topicus.somtoday.leerling:443/oauth/callback?code=one-time-code&state=flow-state";
+  assert.deepEqual(parseSomtodayCallback(callback), {
+    redirectUrl: callback,
+    code: "one-time-code",
+    state: "flow-state",
+  });
+});
+
 test("finds Location without depending on header casing", () => {
   assert.equal(
     findHeader([{ name: "LOCATION", value: CALLBACK }], "location"),
@@ -39,11 +50,23 @@ test("finds Location without depending on header casing", () => {
   assert.equal(findHeader(undefined, "location"), null);
 });
 
+test("finds the Ajax-Location header used by Wicket login submissions", () => {
+  assert.equal(
+    findRedirectHeader([{ name: "Ajax-Location", value: CALLBACK }]),
+    CALLBACK,
+  );
+  assert.equal(
+    findRedirectHeader([{ name: "LOCATION", value: CALLBACK }]),
+    CALLBACK,
+  );
+});
+
 for (const [name, value] of [
   ["ordinary web URL", "https://example.invalid/?code=x&state=y"],
   ["lookalike host", "somtoday://nl.topicus.somtoday.leerling.evil.test/oauth/callback?code=x&state=y"],
   ["wrong callback path", "somtoday://nl.topicus.somtoday.leerling/oauth/other?code=x&state=y"],
   ["credentials", "somtoday://user@nl.topicus.somtoday.leerling/oauth/callback?code=x&state=y"],
+  ["unexpected port", "somtoday://nl.topicus.somtoday.leerling:444/oauth/callback?code=x&state=y"],
   ["fragment", `${CALLBACK}#unexpected`],
   ["missing code", "somtoday://nl.topicus.somtoday.leerling/oauth/callback?state=y"],
   ["duplicate code", `${CALLBACK}&code=second`],

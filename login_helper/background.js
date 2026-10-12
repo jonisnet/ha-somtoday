@@ -1,6 +1,6 @@
 import {
   createCapture,
-  findHeader,
+  findRedirectHeader,
   isFreshCapture,
   parseSomtodayCallback,
 } from "./oauth_redirect.js";
@@ -10,15 +10,16 @@ export const EXPIRY_ALARM = "expireSomtodayRedirect";
 
 const SOMTODAY_LOGIN_FILTER = {
   urls: ["https://inloggen.somtoday.nl/*"],
-  types: ["main_frame"],
 };
 
+// Do not restrict this to main_frame. Somtoday submits some login forms with a
+// background fetch/XHR, so the redirect never becomes a page navigation.
 // Listener registration must happen synchronously at module evaluation time;
 // an MV3 service worker can be stopped and recreated between browser events.
 chrome.webRequest.onHeadersReceived.addListener(
   (details) => {
     void captureRedirect(
-      findHeader(details.responseHeaders, "location"),
+      findRedirectHeader(details.responseHeaders),
       details.tabId,
     );
   },

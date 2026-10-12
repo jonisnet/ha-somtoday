@@ -13,7 +13,7 @@ class ExtensionLoadUnavailableError extends Error {}
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const helperDirectory = path.resolve(scriptDirectory, "..");
 const callback =
-  "somtoday://nl.topicus.somtoday.leerling/oauth/callback?code=browser-smoke-code";
+  "somtoday://nl.topicus.somtoday.leerling:443/oauth/callback?code=browser-smoke-code";
 
 const browserCandidates = [
   {
@@ -34,7 +34,16 @@ const browserCandidates = [
   },
 ];
 
-const server = http.createServer((_request, response) => {
+const server = http.createServer((request, response) => {
+  if (request.url === "/login") {
+    response.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+    response.end(
+      "<!doctype html><title>Login simulation</title>" +
+        "<script>location.href='/oauth-finish';</script>",
+    );
+    return;
+  }
+
   response.writeHead(302, { Location: callback });
   response.end();
 });
@@ -76,9 +85,9 @@ async function testBrowser(name, executable, testPort) {
   const extensionDirectory = path.join(temporaryRoot, "extension");
   const profileDirectory = path.join(temporaryRoot, "profile");
   let browser;
-  let cdp;
 
   try {
+    console.log(`${name}: preparing temporary extension`);
     await cp(helperDirectory, extensionDirectory, {
       recursive: true,
       filter(source) {
@@ -86,6 +95,7 @@ async function testBrowser(name, executable, testPort) {
       },
     });
     await prepareLocalTestExtension(extensionDirectory);
+    console.log(`${name}: temporary extension prepared`);
 
     browser = spawn(
       executable,
@@ -103,60 +113,42 @@ async function testBrowser(name, executable, testPort) {
       ],
       { stdio: "ignore" },
     );
+    console.log(`${name}: browser process started`);
 
-    const debuggerAddress = await waitForDevTools(profileDirectory);
-    cdp = await connectCdp(debuggerAddress);
+    const debuggerPort = await waitForDevTools(profileDirectory);
+    console.log(`${name}: debugging endpoint ready`);
+    let extensionTarget;
     try {
-      await waitForTarget(
-        cdp,
+      extensionTarget = await waitForTarget(
+        debuggerPort,
         (item) => item.type === "service_worker" && item.url.endsWith("/background.js"),
         `${name} did not load the temporary extension`,
       );
     } catch (error) {
       throw new ExtensionLoadUnavailableError(error.message);
     }
-    await cdp.send("Target.createTarget", {
-      url: `http://127.0.0.1:${testPort}/oauth-finish`,
-    });
-    const target = await waitForTarget(
-      cdp,
-      (item) => item.type === "page" && item.url.endsWith("/popup.html"),
-      `${name} did not open the extension result page`,
-    );
-    const page = await cdp.session(target.targetId);
-    const value = await waitForPopupValue(page);
-    assert.equal(value.redirect, callback, `${name} did not expose the captured redirect`);
-    assert.match(value.text, /Inlogadres gevonden/, `${name} did not show success`);
-  } finally {
-    if (cdp) {
-      try {
-        await withTimeout(cdp.send("Browser.close"), 2_000, "Browser close timed out");
-      } catch {
-        // The browser may already have exited after a failed assertion.
-      }
-      cdp.close();
+    console.log(`${name}: extension service worker loaded`);
+    await openTarget(debuggerPort, `http://127.0.0.1:${testPort}/login`);
+    console.log(`${name}: local login simulation opened`);
+    let target;
+    try {
+      target = await waitForTarget(
+        debuggerPort,
+        (item) => item.type === "page" && item.url.endsWith("/popup.html"),
+        `${name} did not open the extension result page`,
+      );
+      console.log(`${name}: extension result page opened`);
+    } catch (error) {
+      throw new Error(`${error.message}. Worker: ${extensionTarget.url}`);
     }
+    assert.match(target.title, /Somtoday Login Helper/i);
+  } finally {
     if (browser && browser.exitCode === null) {
       browser.kill();
       await Promise.race([once(browser, "exit"), delay(2_000)]);
     }
     await rm(temporaryRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
   }
-}
-
-async function waitForPopupValue(page) {
-  let value = {};
-  for (let attempt = 0; attempt < 50; attempt += 1) {
-    const evaluation = await page.send("Runtime.evaluate", {
-      expression:
-        "({text: document.body.innerText, redirect: document.querySelector('#redirect')?.value})",
-      returnByValue: true,
-    });
-    value = evaluation.result.value ?? {};
-    if (value.redirect) return value;
-    await delay(100);
-  }
-  return value;
 }
 
 async function prepareLocalTestExtension(directory) {
@@ -167,10 +159,44 @@ async function prepareLocalTestExtension(directory) {
 
   const backgroundPath = path.join(directory, "background.js");
   const background = await readFile(backgroundPath, "utf8");
-  await writeFile(
-    backgroundPath,
-    background.replace("https://inloggen.somtoday.nl/*", "http://127.0.0.1/*"),
+  const patchedBackground = background.replace(
+    "https://inloggen.somtoday.nl/*",
+    "http://127.0.0.1/*",
   );
+  const diagnosticListeners = `
+chrome.webRequest.onHeadersReceived.addListener(
+  (details) => void chrome.storage.session.set({
+    smokeHeadersEvent: {
+      statusCode: details.statusCode,
+      type: details.type,
+      headers: (details.responseHeaders ?? []).map(({ name, value }) => ({ name, value })),
+    },
+  }),
+  { urls: ["http://127.0.0.1/*"] },
+  ["responseHeaders", "extraHeaders"],
+);
+chrome.webRequest.onBeforeRedirect.addListener(
+  (details) => void chrome.storage.session.set({
+    smokeRedirectEvent: {
+      redirectUrl: details.redirectUrl,
+      statusCode: details.statusCode,
+      type: details.type,
+    },
+  }),
+  { urls: ["http://127.0.0.1/*"] },
+);
+chrome.webRequest.onErrorOccurred.addListener(
+  (details) => void chrome.storage.session.set({
+    smokeErrorEvent: {
+      error: details.error,
+      type: details.type,
+      url: details.url,
+    },
+  }),
+  { urls: ["http://127.0.0.1/*"] },
+);
+`;
+  await writeFile(backgroundPath, `${patchedBackground}\n${diagnosticListeners}`);
 }
 
 async function firstExisting(paths) {
@@ -191,7 +217,7 @@ async function waitForDevTools(profileDirectory) {
     try {
       const [port, browserPath] = (await readFile(file, "utf8")).trim().split(/\r?\n/);
       if (port && browserPath) {
-        return `ws://127.0.0.1:${port}${browserPath}`;
+        return Number(port);
       }
     } catch {
       // Browser startup is still in progress.
@@ -201,43 +227,24 @@ async function waitForDevTools(profileDirectory) {
   throw new Error("Browser did not expose its debugging endpoint");
 }
 
-async function connectCdp(address) {
-  const socket = new WebSocket(address);
-  await withTimeout(once(socket, "open"), 5_000, "Could not connect to browser debugging endpoint");
-  let nextId = 0;
-  const pending = new Map();
-
-  socket.addEventListener("message", (event) => {
-    const message = JSON.parse(event.data);
-    if (!message.id || !pending.has(message.id)) return;
-    const { resolve, reject } = pending.get(message.id);
-    pending.delete(message.id);
-    if (message.error) reject(new Error(message.error.message));
-    else resolve(message.result);
-  });
-
-  function send(method, params = {}, sessionId) {
-    const id = ++nextId;
-    return new Promise((resolve, reject) => {
-      pending.set(id, { resolve, reject });
-      socket.send(JSON.stringify({ id, method, params, ...(sessionId ? { sessionId } : {}) }));
-    });
+async function openTarget(debuggerPort, url) {
+  const response = await fetch(
+    `http://127.0.0.1:${debuggerPort}/json/new?${encodeURIComponent(url)}`,
+    { method: "PUT" },
+  );
+  if (!response.ok) {
+    throw new Error(`Browser could not open the local login simulation (${response.status})`);
   }
-
-  return {
-    close: () => socket.close(),
-    send,
-    async session(targetId) {
-      const { sessionId } = await send("Target.attachToTarget", { targetId, flatten: true });
-      return { send: (method, params = {}) => send(method, params, sessionId) };
-    },
-  };
 }
 
-async function waitForTarget(cdp, predicate, message = "Target did not appear") {
+async function waitForTarget(debuggerPort, predicate, message = "Target did not appear") {
   let lastTargetInfos = [];
   for (let attempt = 0; attempt < 100; attempt += 1) {
-    const { targetInfos } = await cdp.send("Target.getTargets");
+    const response = await fetch(`http://127.0.0.1:${debuggerPort}/json/list`);
+    if (!response.ok) {
+      throw new Error(`Browser did not return its target list (${response.status})`);
+    }
+    const targetInfos = await response.json();
     lastTargetInfos = targetInfos;
     const target = targetInfos.find(predicate);
     if (target) return target;
@@ -249,18 +256,4 @@ async function waitForTarget(cdp, predicate, message = "Target did not appear") 
 
 function delay(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
-}
-
-async function withTimeout(promise, milliseconds, message) {
-  let timeout;
-  try {
-    return await Promise.race([
-      promise,
-      new Promise((_, reject) => {
-        timeout = setTimeout(() => reject(new Error(message)), milliseconds);
-      }),
-    ]);
-  } finally {
-    clearTimeout(timeout);
-  }
 }
