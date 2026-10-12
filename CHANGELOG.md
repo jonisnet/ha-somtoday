@@ -7,6 +7,12 @@ releases, where this file is consolidated into one summary per real version.
 ## 0.1.4
 
 ### Added
+- **An optional Manifest V3 Somtoday Login Helper feasibility release.** It
+  catches only the exact custom-scheme OAuth callback from Somtoday's login
+  host, keeps it in memory for at most five minutes, and makes it available to
+  copy into the existing config flow. It lives in `login_helper/`, has its own
+  dependency-free tests and security documentation, and does not alter the
+  integration or replace the DevTools fallback.
 - **A blueprint for the schedule-change notification.** Phones are picked from
   a searchable device list and the notify service names are derived from them,
   so nobody has to type `notify.mobile_app_...` by hand — which is exactly

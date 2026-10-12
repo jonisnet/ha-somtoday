@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Somtoday Login Helper",
+  "description": "Makes the Somtoday login redirect available for pasting into Home Assistant.",
+  "version": "0.1.0",
+  "minimum_chrome_version": "102",
+  "permissions": [
+    "alarms",
+    "storage",
+    "webRequest"
+  ],
+  "host_permissions": [
+    "https://inloggen.somtoday.nl/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Somtoday Login Helper",
+    "default_popup": "popup.html"
+  }
+}
