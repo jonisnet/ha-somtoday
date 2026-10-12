@@ -14,7 +14,6 @@ if not exist "%SOMTODAY_HELPER_DIR%manifest.json" (
   exit /b 1
 )
 
-powershell.exe -NoProfile -Command "Set-Clipboard -Value $env:SOMTODAY_HELPER_DIR" >nul 2>&1
 start "" explorer.exe "%SOMTODAY_HELPER_DIR%"
 
 echo.
@@ -29,32 +28,42 @@ choice /C CE /N /M "Kies C of E: "
 if errorlevel 2 goto edge
 
 :chrome
+set "EXTENSIONS_URL=chrome://extensions/"
 set "BROWSER_EXE=%ProgramFiles%\Google\Chrome\Application\chrome.exe"
 if not exist "%BROWSER_EXE%" set "BROWSER_EXE=%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe"
 if not exist "%BROWSER_EXE%" set "BROWSER_EXE=%LocalAppData%\Google\Chrome\Application\chrome.exe"
-if exist "%BROWSER_EXE%" (
-  start "" "%BROWSER_EXE%" "chrome://extensions/"
-) else (
-  start "" "chrome://extensions/"
-)
 set "BROWSER_NAME=Chrome"
-goto instructions
+goto open_browser
 
 :edge
+set "EXTENSIONS_URL=edge://extensions/"
 set "BROWSER_EXE=%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe"
 if not exist "%BROWSER_EXE%" set "BROWSER_EXE=%ProgramFiles%\Microsoft\Edge\Application\msedge.exe"
 if not exist "%BROWSER_EXE%" set "BROWSER_EXE=%LocalAppData%\Microsoft\Edge\Application\msedge.exe"
-if exist "%BROWSER_EXE%" (
-  start "" "%BROWSER_EXE%" "edge://extensions/"
-) else (
-  start "" "edge://extensions/"
-)
 set "BROWSER_NAME=Edge"
+
+:open_browser
+if not exist "%BROWSER_EXE%" goto browser_not_found
+start "" "%BROWSER_EXE%" --new-window "%EXTENSIONS_URL%"
+set "PAGE_STATUS=De extensiepagina van %BROWSER_NAME% wordt in een nieuw venster geopend."
+goto instructions
+
+:browser_not_found
+powershell.exe -NoProfile -Command "Set-Clipboard -Value $env:EXTENSIONS_URL" >nul 2>&1
+echo.
+echo %BROWSER_NAME% kon niet automatisch worden gevonden.
+echo Open %BROWSER_NAME% zelf en plak dit adres in de adresbalk:
+echo.
+echo   %EXTENSIONS_URL%
+echo.
+echo Het adres staat ook op het klembord.
+set "PAGE_STATUS=De map is geopend; open de extensiepagina met het adres hierboven."
 
 :instructions
 echo.
-echo De extensiepagina van %BROWSER_NAME% en deze map zijn geopend.
-echo Het pad naar deze map staat ook op het klembord.
+echo %PAGE_STATUS%
+echo Verschijnt de extensiepagina niet? Open %BROWSER_NAME% en ga naar:
+echo   %EXTENSIONS_URL%
 echo.
 echo Doe nu alleen nog dit:
 echo   1. Zet Ontwikkelaarsmodus aan.

@@ -18,6 +18,8 @@ releases, where this file is consolidated into one summary per real version.
   reducing installation to extracting the ZIP, enabling Developer mode and
   choosing **Load unpacked**. Browser-store installation is deliberately not
   implied: Chrome and Edge do not allow one-click installation from GitHub.
+  Version 0.1.2 starts the selected browser in a new window and shows the exact
+  internal extensions address as a fallback when Windows cannot open it.
 - **A blueprint for the schedule-change notification.** Phones are picked from
   a searchable device list and the notify service names are derived from them,
   so nobody has to type `notify.mobile_app_...` by hand — which is exactly

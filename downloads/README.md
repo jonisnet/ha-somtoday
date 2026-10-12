@@ -2,7 +2,7 @@
 
 Download de nieuwste kant-en-klare versie:
 
-**[Somtoday Login Helper 0.1.1 (ZIP)](Somtoday-Login-Helper-0.1.1.zip)**
+**[Somtoday Login Helper 0.1.2 (ZIP)](Somtoday-Login-Helper-0.1.2.zip)**
 
 Pak de ZIP volledig uit en dubbelklik daarna op
 `INSTALLEREN-WINDOWS.cmd`. De installer opent de juiste extensiepagina en de

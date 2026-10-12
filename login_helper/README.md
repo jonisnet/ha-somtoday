@@ -11,7 +11,7 @@ instructions remain the supported fallback.
 ## Easiest installation on Windows
 
 1. Download the ready-made
-   **[Somtoday Login Helper ZIP](../downloads/Somtoday-Login-Helper-0.1.1.zip)**.
+   **[Somtoday Login Helper ZIP](../downloads/Somtoday-Login-Helper-0.1.2.zip)**.
 2. Right-click the ZIP, choose **Extract all**, and open the extracted folder.
 3. Double-click **`INSTALLEREN-WINDOWS.cmd`** and choose Chrome or Edge.
 4. Enable **Developer mode**, choose **Load unpacked**, and select the folder

@@ -100,7 +100,7 @@ sign-in again just restarts the whole login, which is why it asks for your
 password a second time.
 
 For Chrome and Edge, download the optional
-**[Somtoday Login Helper (ZIP)](downloads/Somtoday-Login-Helper-0.1.1.zip)**.
+**[Somtoday Login Helper (ZIP)](downloads/Somtoday-Login-Helper-0.1.2.zip)**.
 Extract it and double-click **`INSTALLEREN-WINDOWS.cmd`**; it opens the browser
 page and folder you need. The helper detects only this exact Somtoday callback
 and gives you a **Kopiëren en wissen** button. It uses Manifest V3 and does not
