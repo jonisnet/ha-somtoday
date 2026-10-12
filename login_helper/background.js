@@ -17,10 +17,23 @@ const SOMTODAY_LOGIN_FILTER = {
 // an MV3 service worker can be stopped and recreated between browser events.
 chrome.webRequest.onHeadersReceived.addListener(
   (details) => {
-    void captureRedirectFromHeaders(details.responseHeaders);
+    void captureRedirect(
+      findHeader(details.responseHeaders, "location"),
+      details.tabId,
+    );
   },
   SOMTODAY_LOGIN_FILTER,
-  ["responseHeaders"],
+  ["responseHeaders", "extraHeaders"],
+);
+
+// Chrome exposes the resolved target of a server redirect directly here. This
+// is the primary path; the response-header listener above remains as a fallback
+// for browser versions that do not report a custom-scheme redirect event.
+chrome.webRequest.onBeforeRedirect.addListener(
+  (details) => {
+    void captureRedirect(details.redirectUrl, details.tabId);
+  },
+  SOMTODAY_LOGIN_FILTER,
 );
 
 chrome.alarms.onAlarm.addListener((alarm) => {
@@ -44,9 +57,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 void chrome.storage.session.setAccessLevel({ accessLevel: "TRUSTED_CONTEXTS" });
 void clearExpiredCapture();
 
-async function captureRedirectFromHeaders(headers) {
-  const location = findHeader(headers, "location");
-  const callback = parseSomtodayCallback(location);
+async function captureRedirect(redirectUrl, tabId = -1) {
+  const callback = parseSomtodayCallback(redirectUrl);
   if (!callback) {
     return;
   }
@@ -57,6 +69,20 @@ async function captureRedirectFromHeaders(headers) {
   await chrome.action.setBadgeBackgroundColor({ color: "#138A36" });
   await chrome.action.setBadgeText({ text: "1" });
   await chrome.action.setTitle({ title: "Somtoday-login gevonden" });
+
+  // Make success visible even when Chrome silently discards the custom scheme
+  // and the extension is hidden behind the puzzle-piece menu. Navigating a tab
+  // does not require the broad `tabs` permission.
+  if (Number.isInteger(tabId) && tabId >= 0) {
+    try {
+      await chrome.tabs.update(tabId, {
+        url: chrome.runtime.getURL("popup.html"),
+      });
+    } catch {
+      // The tab may have been closed between the redirect and this update. The
+      // badge and popup remain available as a complete fallback.
+    }
+  }
 }
 
 async function clearExpiredCapture(now = Date.now()) {

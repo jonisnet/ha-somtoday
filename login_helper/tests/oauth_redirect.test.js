@@ -21,6 +21,16 @@ test("accepts the exact Somtoday callback and preserves it byte-for-byte", () =>
   });
 });
 
+test("accepts Somtoday callbacks that omit state", () => {
+  const callback =
+    "somtoday://nl.topicus.somtoday.leerling/oauth/callback?code=one-time-code";
+  assert.deepEqual(parseSomtodayCallback(callback), {
+    redirectUrl: callback,
+    code: "one-time-code",
+    state: null,
+  });
+});
+
 test("finds Location without depending on header casing", () => {
   assert.equal(
     findHeader([{ name: "LOCATION", value: CALLBACK }], "location"),
@@ -36,7 +46,6 @@ for (const [name, value] of [
   ["credentials", "somtoday://user@nl.topicus.somtoday.leerling/oauth/callback?code=x&state=y"],
   ["fragment", `${CALLBACK}#unexpected`],
   ["missing code", "somtoday://nl.topicus.somtoday.leerling/oauth/callback?state=y"],
-  ["missing state", "somtoday://nl.topicus.somtoday.leerling/oauth/callback?code=x"],
   ["duplicate code", `${CALLBACK}&code=second`],
   ["duplicate state", `${CALLBACK}&state=second`],
   ["OAuth error", "somtoday://nl.topicus.somtoday.leerling/oauth/callback?error=access_denied&state=y"],

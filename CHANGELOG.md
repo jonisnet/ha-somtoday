@@ -4,6 +4,20 @@ All notable changes to the Somtoday integration are documented here.
 Development happens in beta releases (`X.Y.Z-beta.N`) between occasional real
 releases, where this file is consolidated into one summary per real version.
 
+## 0.1.7
+
+### Fixed
+- **Somtoday Login Helper 0.1.3 now catches the redirect users actually get.**
+  Some successful Somtoday login routes omit OAuth `state`; the helper
+  previously rejected those valid callbacks. It now accepts the same callback
+  shape as Home Assistant, observes both the redirect event and its
+  `Location` header, and automatically replaces the unchanged login tab with
+  a visible result page.
+- **The Windows setup helper survives browser profile selection.** It first
+  opens Chrome or Edge normally, waits for the user to select the intended
+  profile, and only then opens the extensions page. The internal extensions
+  address is also copied to the clipboard as a reliable fallback.
+
 ## 0.1.6
 
 ### Added
