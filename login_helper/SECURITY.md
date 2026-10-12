@@ -45,7 +45,7 @@ minutes. It is removed sooner after a successful copy or when the user presses
 
 ## Known limitations
 
-- This feasibility release is installed unpacked and has not gone through a
+- This extension is installed unpacked and has not gone through a
   Chrome Web Store or Microsoft Edge Add-ons review.
 - It assumes Somtoday returns the final custom-scheme redirect from
   `inloggen.somtoday.nl` and echoes the OAuth `state`, as requested by the

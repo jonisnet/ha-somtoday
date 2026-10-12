@@ -1,0 +1,48 @@
+SOMTODAY LOGIN HELPER
+====================
+
+INSTALLEREN OP WINDOWS (ongeveer 1 minuut)
+
+1. Klik met rechts op het gedownloade ZIP-bestand en kies Alles uitpakken.
+2. Open de uitgepakte map en dubbelklik op INSTALLEREN-WINDOWS.cmd.
+3. Kies Chrome of Edge.
+4. Zet Ontwikkelaarsmodus aan op de extensiepagina die wordt geopend.
+5. Klik op Uitgepakte extensie laden en kies de map die de installer opende.
+6. Zet Somtoday Login Helper vast via het puzzelstukje in de adresbalk.
+
+De installer installeert niets buiten deze map. Windows kan waarschuwen omdat
+het een gedownload opdrachtbestand is. Wil je dat bestand niet uitvoeren, volg
+dan de handmatige stappen in README.md; die doen precies hetzelfde.
+
+
+GEBRUIKEN
+
+1. Start het toevoegen of opnieuw aanmelden van Somtoday in Home Assistant.
+2. Open de Somtoday-loginlink en meld je normaal aan.
+3. Zodra het groene cijfer 1 op de helper verschijnt, open je de helper en klik
+   je op Kopiëren en wissen.
+4. Plak de gekopieerde waarde direct in Home Assistant.
+
+De code is eenmalig en kort geldig. Verschijnt het groene cijfer niet, laad de
+extensie dan opnieuw via de extensiepagina en probeer de login nogmaals.
+
+
+VEILIGHEID
+
+- De helper kijkt alleen naar het exacte Somtoday-loginadres.
+- De gevonden login-code blijft alleen in het tijdelijke browsergeheugen.
+- De code wordt na vijf minuten, na kopiëren of na Wissen verwijderd.
+- Er zijn geen advertenties, trackers, externe scripts of automatische uploads.
+- Deel nooit een echte login-code, redirect, token of leerlinggegevens in een
+  openbaar issue.
+
+
+BIJWERKEN OF VERWIJDEREN
+
+Voor bijwerken: download een nieuwe ZIP, pak die uit naar een nieuwe map en klik
+op Opnieuw laden bij de extensie (of verwijder de oude extensie en laad de nieuwe
+map).
+
+Voor verwijderen: open chrome://extensions of edge://extensions, verwijder
+Somtoday Login Helper en verwijder daarna de uitgepakte map.
+
