@@ -4,6 +4,26 @@ All notable changes to the Somtoday integration are documented here.
 Development happens in beta releases (`X.Y.Z-beta.N`) between occasional real
 releases, where this file is consolidated into one summary per real version.
 
+## 0.1.6
+
+### Added
+- **A manual Reconfigure action for refreshing Somtoday credentials.** It uses
+  the same PKCE login and account-identity check as automatic reauthentication,
+  so a token can be replaced without deleting the integration or accidentally
+  binding its entities to another account.
+
+### Fixed
+- **Rotated refresh tokens are persisted immediately.** Somtoday replaces a
+  refresh token whenever it is used. The integration previously saved the new
+  token only after every data request had completed, so a later request failure
+  or restart could leave the already-spent token on disk. The replacement is
+  now stored before the first data request, and the OAuth client embedded in a
+  JWT-shaped refresh token is retained when present.
+- **A bare HTTP 403 during refresh gets one controlled retry, then starts
+  reauthentication.** Invalid tokens normally produce OAuth `invalid_grant`,
+  while a bare 403 may come from Somtoday's edge proxy. Authorization-code and
+  normal API 403 responses remain retryable and never create a reauth loop.
+
 ## 0.1.5
 
 ### Added

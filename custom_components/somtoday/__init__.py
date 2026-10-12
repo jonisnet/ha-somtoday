@@ -60,7 +60,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: SomtodayConfigEntry) -> 
         api_url=entry.data.get(CONF_API_URL) or DEFAULT_API_URL,
         tenant=entry.data.get(CONF_TENANT),
     )
-    auth = SomtodayAuth(session, tokens)
+    def persist_tokens(updated: SomtodayTokens) -> None:
+        """Immediately persist a rotated refresh token and related metadata."""
+        data = {
+            **entry.data,
+            CONF_REFRESH_TOKEN: updated.refresh_token,
+            CONF_API_URL: updated.api_url,
+            CONF_TENANT: updated.tenant,
+        }
+        if data != entry.data:
+            hass.config_entries.async_update_entry(entry, data=data)
+
+    auth = SomtodayAuth(session, tokens, on_tokens_updated=persist_tokens)
     client = SomtodayApiClient(session, auth)
     coordinator = SomtodayCoordinator(hass, entry, client)
     planner = SomtodayPlanner(hass, entry.entry_id, dict(entry.options))

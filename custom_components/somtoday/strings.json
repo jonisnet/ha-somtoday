@@ -20,6 +20,16 @@
         "data_description": {
           "redirect_url": "The somtoday://... address, from the address bar or from the `location` header in DevTools. The whole header line is fine."
         }
+      },
+      "reconfigure": {
+        "title": "Refresh Somtoday credentials",
+        "description": "Use this when you want to replace the stored Somtoday session manually.\n\n1. Open [the Somtoday login page]({auth_url}) and sign in.\n2. Let the Somtoday Login Helper copy the `somtoday://` redirect, or find its `location` response header in the browser's Network tools.\n3. Paste the address below.\n\nThe login code is single-use. Home Assistant never sees your password.",
+        "data": {
+          "redirect_url": "Redirect address"
+        },
+        "data_description": {
+          "redirect_url": "The somtoday://... address copied by the Login Helper or from the `location` response header."
+        }
       }
     },
     "error": {
@@ -34,7 +44,8 @@
     "abort": {
       "already_configured": "This Somtoday account has already been added.",
       "wrong_account": "Those credentials belong to a different Somtoday account. Sign in with the account this entry was set up with.",
-      "reauth_successful": "Somtoday has been reconnected."
+      "reauth_successful": "Somtoday has been reconnected.",
+      "reconfigure_successful": "The Somtoday credentials have been refreshed."
     }
   },
   "options": {

@@ -139,6 +139,15 @@ the form mints a new link and you do have to sign in again. If the paste was
 simply the wrong text, the link you already opened stays valid — no second
 login needed.
 
+To deliberately replace a stored Somtoday session, open the integration's
+menu and choose **Reconfigure**. This runs the same login flow without deleting
+the integration, its entities or its local planner data. A rejected refresh
+token also opens this flow automatically.
+
+Access tokens expire after about one hour. The integration refreshes them in
+the background and immediately stores Somtoday's rotated refresh token, so a
+normal expiry does not require another manual login.
+
 ### Why this dance?
 
 Somtoday's login is designed for its own mobile app, which registers the

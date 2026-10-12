@@ -11,12 +11,14 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import binascii
 import hashlib
 import json
 import logging
 import re
 import secrets
 import string
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -66,10 +68,23 @@ class SomtodayAuthError(Exception):
 class SomtodayInvalidAuth(SomtodayAuthError):
     """A definitive credential rejection — retrying will never help.
 
-    Raised only when Somtoday answers HTTP 400 with ``error=invalid_grant``,
-    meaning the authorization code or refresh token is genuinely dead. This is
-    the only failure that escalates to Home Assistant's reauth flow.
+    Raised when Somtoday answers HTTP 400 with ``error=invalid_grant``, or when
+    its token endpoint repeatedly rejects a refresh-token grant with HTTP 403.
+    This is the only failure that escalates to Home Assistant's reauth flow.
     """
+
+
+class SomtodayTokenRequestError(SomtodayAuthError):
+    """A retryable HTTP rejection from Somtoday's token endpoint."""
+
+    def __init__(self, status: int, error_code: str | None) -> None:
+        """Keep safe response metadata available for retry decisions."""
+        self.status = status
+        self.error_code = error_code
+        super().__init__(
+            f"Somtoday token request failed with status {status} "
+            f"({error_code or 'no error code'})"
+        )
 
 
 @dataclass
@@ -215,18 +230,61 @@ async def async_refresh_tokens(
     one. When it does not, the old token is preserved — spending a rotating
     token and then forgetting it would lock the account out.
     """
-    tokens = await _async_token_request(
-        session,
-        {
-            "grant_type": "refresh_token",
-            "refresh_token": refresh_token,
-            "client_id": CLIENT_ID,
-            "scope": OAUTH_SCOPE,
-        },
-    )
+    payload = {
+        "grant_type": "refresh_token",
+        "refresh_token": refresh_token,
+        # Somtoday embeds the OAuth client in JWT-shaped refresh tokens. Use
+        # that value when present so sessions minted by another supported
+        # Somtoday client are refreshed as that same client. Old/opaque tokens
+        # safely fall back to the native learner client.
+        "client_id": _client_id_from_refresh_token(refresh_token),
+        "scope": OAUTH_SCOPE,
+    }
+
+    try:
+        tokens = await _async_token_request(session, payload)
+    except SomtodayTokenRequestError as err:
+        if err.status != 403:
+            raise
+
+        # A malformed/expired token normally produces OAuth invalid_grant
+        # (HTTP 400). Somtoday and its edge proxy have also produced bare 403s,
+        # which can be transient. Retry once with the same still-unspent token;
+        # only a repeated rejection asks the user to sign in again.
+        _LOGGER.warning(
+            "Somtoday rejected a refresh-token request with HTTP 403; retrying once"
+        )
+        await asyncio.sleep(1)
+        try:
+            tokens = await _async_token_request(session, payload)
+        except SomtodayTokenRequestError as retry_err:
+            if retry_err.status == 403:
+                raise SomtodayInvalidAuth(
+                    "Somtoday repeatedly rejected the stored session"
+                ) from retry_err
+            raise
+
     if not tokens.refresh_token:
         tokens.refresh_token = refresh_token
     return tokens
+
+
+def _client_id_from_refresh_token(refresh_token: str) -> str:
+    """Return the OAuth client embedded in a JWT refresh token, if usable.
+
+    This is only routing metadata, not authentication: Somtoday still verifies
+    the signed token. Nothing from the unverified payload is logged or used as
+    authority.
+    """
+    try:
+        payload = refresh_token.split(".")[1]
+        payload += "=" * (-len(payload) % 4)
+        claims = json.loads(base64.urlsafe_b64decode(payload).decode("utf-8"))
+    except (IndexError, ValueError, UnicodeDecodeError, binascii.Error):
+        return CLIENT_ID
+
+    client_id = claims.get("client_id") if isinstance(claims, dict) else None
+    return client_id if isinstance(client_id, str) and client_id else CLIENT_ID
 
 
 async def _async_token_request(
@@ -235,8 +293,7 @@ async def _async_token_request(
     """POST to the token endpoint and parse the response.
 
     Raises:
-        SomtodayInvalidAuth: HTTP 400 with ``error=invalid_grant`` — the code
-            or refresh token is dead and reauth is the only way forward.
+        SomtodayInvalidAuth: HTTP 400 with ``error=invalid_grant``.
         SomtodayAuthError: Any other non-200, a malformed body, or a network
             failure. Retryable; never escalate these to reauth.
 
@@ -254,17 +311,10 @@ async def _async_token_request(
         raise SomtodayAuthError(f"Network error talking to Somtoday: {err}") from err
 
     if status != 200:
-        # Somtoday answers with the standard OAuth2 error object. Only
-        # ``invalid_grant`` is definitive; everything else (rate limiting, a
-        # 5xx, a changed endpoint) must stay retryable so a Somtoday outage
-        # never pushes a working account into reauth.
         error = _error_code(body)
         if status == 400 and error == "invalid_grant":
             raise SomtodayInvalidAuth("Somtoday rejected the token as invalid")
-        raise SomtodayAuthError(
-            f"Somtoday token request failed with status {status} "
-            f"({error or 'no error code'})"
-        )
+        raise SomtodayTokenRequestError(status, error)
 
     try:
         data: Any = json.loads(body)
@@ -306,11 +356,15 @@ class SomtodayAuth:
     """
 
     def __init__(
-        self, session: aiohttp.ClientSession, tokens: SomtodayTokens
+        self,
+        session: aiohttp.ClientSession,
+        tokens: SomtodayTokens,
+        on_tokens_updated: Callable[[SomtodayTokens], None] | None = None,
     ) -> None:
         """Initialise with an already-obtained token set."""
         self._session = session
         self._tokens = tokens
+        self._on_tokens_updated = on_tokens_updated
         self._lock = asyncio.Lock()
 
     @property
@@ -338,9 +392,17 @@ class SomtodayAuth:
             tokens = await async_refresh_tokens(
                 self._session, self._tokens.refresh_token
             )
-            # Somtoday keeps the API URL stable across refreshes, but a
-            # response can omit it; never downgrade a known-good value.
-            if not tokens.api_url:
+            # Refresh responses can omit account metadata. The parser has to
+            # supply a default URL for first-time logins, so detect that default
+            # here and keep the entry's already-proven endpoint instead.
+            if tokens.api_url == DEFAULT_API_URL and self._tokens.api_url:
                 tokens.api_url = self._tokens.api_url
+            if tokens.tenant is None:
+                tokens.tenant = self._tokens.tenant
             self._tokens = tokens
+            # Refresh tokens are single-use and rotate. Persist the replacement
+            # before making any data API call, so a later request failure or HA
+            # restart cannot strand the entry with the already-spent token.
+            if self._on_tokens_updated is not None:
+                self._on_tokens_updated(tokens)
             return tokens.access_token

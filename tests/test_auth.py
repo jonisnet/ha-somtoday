@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import hashlib
+import json
 from datetime import datetime, timedelta, timezone
 from urllib.parse import parse_qs, urlparse
 
@@ -16,6 +17,7 @@ from custom_components.somtoday.auth import (
     SomtodayAuthError,
     SomtodayInvalidAuth,
     SomtodayTokens,
+    _client_id_from_refresh_token,
     async_exchange_code,
     async_refresh_tokens,
     build_authorize_url,
@@ -189,11 +191,52 @@ async def test_exchange_code_success(session):
 
 
 async def test_invalid_grant_is_a_definitive_rejection(session):
-    """Only this maps to reauth; everything else must stay retryable."""
+    """A standards-compliant invalid_grant response maps to reauth."""
     with aioresponses() as mocked:
         mocked.post(TOKEN_URL, payload=payloads.INVALID_GRANT_RESPONSE, status=400)
         with pytest.raises(SomtodayInvalidAuth):
             await async_exchange_code(session, "dead-code", "verifier")
+
+
+async def test_refresh_403_without_error_code_is_a_definitive_rejection(session):
+    """A repeated bare 403 rejects the session after one safe retry."""
+    with aioresponses() as mocked:
+        mocked.post(TOKEN_URL, status=403)
+        mocked.post(TOKEN_URL, status=403)
+        with pytest.raises(SomtodayInvalidAuth):
+            await async_refresh_tokens(session, "reset-refresh-token")
+
+
+async def test_code_exchange_403_stays_retryable(session):
+    """A client-wide token-endpoint rejection must not cause a reauth loop."""
+    with aioresponses() as mocked:
+        mocked.post(TOKEN_URL, status=403)
+        with pytest.raises(SomtodayAuthError) as excinfo:
+            await async_exchange_code(session, "code", "verifier")
+    assert not isinstance(excinfo.value, SomtodayInvalidAuth)
+
+
+async def test_refresh_recovers_from_a_transient_403(session):
+    with aioresponses() as mocked:
+        mocked.post(TOKEN_URL, status=403)
+        mocked.post(TOKEN_URL, payload=payloads.ROTATED_TOKEN_RESPONSE, status=200)
+        tokens = await async_refresh_tokens(session, "fictional-refresh-token")
+
+    assert tokens.access_token == "fictional-access-token-2"
+
+
+def test_refresh_uses_client_id_embedded_in_token():
+    claims = base64.urlsafe_b64encode(
+        json.dumps({"client_id": "somtoday-session-client"}).encode()
+    ).decode().rstrip("=")
+    token = f"header.{claims}.signature"
+
+    assert _client_id_from_refresh_token(token) == "somtoday-session-client"
+
+
+@pytest.mark.parametrize("token", ["opaque", "x.!.y", "x.W10.y"])
+def test_refresh_client_id_falls_back_for_opaque_or_unusable_tokens(token):
+    assert _client_id_from_refresh_token(token) == "somtoday-leerling-native"
 
 
 async def test_server_error_stays_retryable(session):
@@ -280,6 +323,40 @@ async def test_expired_token_is_refreshed(session):
         assert await auth.async_get_access_token() == "fictional-access-token-2"
 
     assert auth.tokens.refresh_token == "fictional-refresh-token-2"
+
+
+async def test_rotated_token_is_reported_immediately(session):
+    updates = []
+    auth = SomtodayAuth(
+        session,
+        _tokens(expires_in_seconds=-10),
+        on_tokens_updated=updates.append,
+    )
+    with aioresponses() as mocked:
+        mocked.post(TOKEN_URL, payload=payloads.ROTATED_TOKEN_RESPONSE, status=200)
+        await auth.async_get_access_token()
+
+    assert [tokens.refresh_token for tokens in updates] == [
+        "fictional-refresh-token-2"
+    ]
+
+
+async def test_refresh_preserves_omitted_account_metadata(session):
+    original = _tokens(expires_in_seconds=-10)
+    original.tenant = "Voorbeeld College"
+    response = {
+        key: value
+        for key, value in payloads.ROTATED_TOKEN_RESPONSE.items()
+        if key not in ("somtoday_api_url", "somtoday_tenant")
+    }
+    auth = SomtodayAuth(session, original)
+
+    with aioresponses() as mocked:
+        mocked.post(TOKEN_URL, payload=response, status=200)
+        await auth.async_get_access_token()
+
+    assert auth.tokens.api_url == "https://api.example.invalid"
+    assert auth.tokens.tenant == "Voorbeeld College"
 
 
 async def test_token_about_to_expire_is_refreshed_early(session):
