@@ -136,6 +136,30 @@ class SomtodayConfigFlow(ConfigFlow, domain=DOMAIN):
             self._get_reauth_entry(), data_updates=_entry_data(tokens)
         )
 
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Let the user deliberately replace the stored Somtoday session."""
+        if user_input is None:
+            return self._async_show_login_form("reconfigure")
+
+        tokens, error = await self._async_tokens_from_input(user_input)
+        if tokens is None:
+            return self._async_show_login_form("reconfigure", error)
+
+        identity, error = await self._async_identify(tokens)
+        if identity is None:
+            return self._async_show_login_form("reconfigure", error)
+
+        unique_id, _title = identity
+        # A manual refresh must not silently bind this entry to another account.
+        await self.async_set_unique_id(unique_id)
+        self._abort_if_unique_id_mismatch(reason="wrong_account")
+
+        return self.async_update_reload_and_abort(
+            self._get_reconfigure_entry(), data_updates=_entry_data(tokens)
+        )
+
     # ------------------------------------------------------------------
     # Shared helpers
     # ------------------------------------------------------------------

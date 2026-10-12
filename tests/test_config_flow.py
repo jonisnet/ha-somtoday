@@ -4,7 +4,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from homeassistant.config_entries import SOURCE_REAUTH, SOURCE_USER
+from homeassistant.config_entries import SOURCE_REAUTH, SOURCE_RECONFIGURE, SOURCE_USER
 from homeassistant.data_entry_flow import FlowResultType
 
 from custom_components.somtoday.api import SomtodayApiError
@@ -287,6 +287,62 @@ async def test_reauth_error_re_renders_the_form(hass, config_entry, mock_flow_ap
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "reauth_confirm"
     assert result["errors"] == {"base": "invalid_auth"}
+
+
+# --------------------------------------------------------------------------
+# Manual reconfigure
+# --------------------------------------------------------------------------
+
+
+async def test_reconfigure_replaces_the_stored_token(
+    hass, config_entry, mock_flow_api, tokens
+):
+    """The integration menu can force a fresh login before automatic reauth."""
+    config_entry.add_to_hass(hass)
+    tokens.refresh_token = "manually-renewed-refresh-token"
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={
+            "source": SOURCE_RECONFIGURE,
+            "entry_id": config_entry.entry_id,
+        },
+    )
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "reconfigure"
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_REDIRECT_URL: REDIRECT}
+    )
+
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "reconfigure_successful"
+    assert config_entry.data[CONF_REFRESH_TOKEN] == "manually-renewed-refresh-token"
+
+
+async def test_reconfigure_with_a_different_account_aborts(
+    hass, config_entry, mock_flow_api
+):
+    config_entry.add_to_hass(hass)
+    _exchange, client = mock_flow_api
+    client.async_get_account.return_value = {
+        "links": [{"id": 999999, "rel": "self", "type": "account.RAccount"}]
+    }
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={
+            "source": SOURCE_RECONFIGURE,
+            "entry_id": config_entry.entry_id,
+        },
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_REDIRECT_URL: REDIRECT}
+    )
+
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "wrong_account"
+    assert config_entry.data[CONF_REFRESH_TOKEN] == "fictional-refresh-token"
 
 
 # --------------------------------------------------------------------------

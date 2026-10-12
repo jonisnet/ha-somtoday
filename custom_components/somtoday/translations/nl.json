@@ -20,6 +20,16 @@
         "data_description": {
           "redirect_url": "Het somtoday://...-adres, uit de adresbalk of uit de `location`-header in DevTools. De hele headerregel plakken mag."
         }
+      },
+      "reconfigure": {
+        "title": "Somtoday-inloggegevens vernieuwen",
+        "description": "Gebruik dit om de opgeslagen Somtoday-sessie handmatig te vervangen.\n\n1. Open [de Somtoday-inlogpagina]({auth_url}) en log in.\n2. Laat de Somtoday Login Helper het `somtoday://`-adres kopiëren, of zoek de `location`-responseheader in de Network-tools van je browser.\n3. Plak het adres hieronder.\n\nDe inlogcode is eenmalig. Home Assistant ziet je wachtwoord nooit.",
+        "data": {
+          "redirect_url": "Doorverwijsadres"
+        },
+        "data_description": {
+          "redirect_url": "Het somtoday://...-adres uit de Login Helper of uit de `location`-responseheader."
+        }
       }
     },
     "error": {
@@ -34,7 +44,8 @@
     "abort": {
       "already_configured": "Dit Somtoday-account is al toegevoegd.",
       "wrong_account": "Deze inloggegevens horen bij een ander Somtoday-account. Log in met het account waarmee deze koppeling is ingesteld.",
-      "reauth_successful": "De verbinding met Somtoday is hersteld."
+      "reauth_successful": "De verbinding met Somtoday is hersteld.",
+      "reconfigure_successful": "De Somtoday-inloggegevens zijn vernieuwd."
     }
   },
   "options": {
