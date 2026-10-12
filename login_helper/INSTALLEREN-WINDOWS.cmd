@@ -44,8 +44,18 @@ set "BROWSER_NAME=Edge"
 
 :open_browser
 if not exist "%BROWSER_EXE%" goto browser_not_found
+set "CLIPBOARD_STATUS="
+powershell.exe -NoProfile -Command "Set-Clipboard -Value $env:EXTENSIONS_URL" >nul 2>&1
+if not errorlevel 1 set "CLIPBOARD_STATUS=ok"
+echo.
+echo %BROWSER_NAME% wordt eerst zonder speciale pagina geopend.
+echo Kies zo nodig het Chrome- of Edge-profiel waarin je de helper wilt gebruiken.
+echo Zorg dat van dat profiel een normaal browservenster zichtbaar is.
+echo.
+start "" "%BROWSER_EXE%"
+pause
 start "" "%BROWSER_EXE%" --new-window "%EXTENSIONS_URL%"
-set "PAGE_STATUS=De extensiepagina van %BROWSER_NAME% wordt in een nieuw venster geopend."
+set "PAGE_STATUS=De extensiepagina van %BROWSER_NAME% wordt nu in het gekozen profiel geopend."
 goto instructions
 
 :browser_not_found
@@ -64,6 +74,7 @@ echo.
 echo %PAGE_STATUS%
 echo Verschijnt de extensiepagina niet? Open %BROWSER_NAME% en ga naar:
 echo   %EXTENSIONS_URL%
+if "%CLIPBOARD_STATUS%"=="ok" echo Het adres staat ook op het klembord; plak het met Ctrl+V in de adresbalk.
 echo.
 echo Doe nu alleen nog dit:
 echo   1. Zet Ontwikkelaarsmodus aan.

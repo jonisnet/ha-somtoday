@@ -8,7 +8,8 @@ like a password until Home Assistant has exchanged it.
 The Manifest V3 permissions are deliberately narrow:
 
 - `host_permissions` contains only `https://inloggen.somtoday.nl/*`.
-- `webRequest` reads response headers for top-level navigations on that host.
+- `webRequest` reads redirect targets and response headers for top-level
+  navigations on that host.
   It does not block, alter or redirect traffic and does not request the MV2
   `webRequestBlocking` capability.
 - `storage` keeps one validated redirect in `chrome.storage.session`, which is
@@ -27,15 +28,15 @@ A response is retained only when all of these conditions hold:
 
 1. the response belongs to a top-level request on
    `https://inloggen.somtoday.nl/*`;
-2. its `Location` header is a valid URL with the exact scheme, host and path
+2. its redirect target or `Location` header is a valid URL with the exact scheme, host and path
    `somtoday://nl.topicus.somtoday.leerling/oauth/callback`;
-3. it contains exactly one non-empty `code` and one non-empty `state` query
+3. it contains exactly one non-empty `code`, at most one valid `state` query
    parameter, no credentials and no fragment.
 
 The helper preserves the callback unchanged. Home Assistant remains the OAuth
-relying party and performs the authoritative comparison between the returned
-`state` and the state from the PKCE flow it created. The extension never sees
-the code verifier and cannot exchange the code itself.
+relying party and performs the authoritative comparison when Somtoday returns
+`state`. The extension never sees the code verifier and cannot exchange the
+code itself.
 
 ## Lifetime and deletion
 
@@ -48,9 +49,10 @@ minutes. It is removed sooner after a successful copy or when the user presses
 - This extension is installed unpacked and has not gone through a
   Chrome Web Store or Microsoft Edge Add-ons review.
 - It assumes Somtoday returns the final custom-scheme redirect from
-  `inloggen.somtoday.nl` and echoes the OAuth `state`, as requested by the
-  integration. If that server behaviour changes, the helper fails closed and
-  the DevTools method still works.
+  `inloggen.somtoday.nl`. Some login routes omit OAuth `state`; when one is
+  present, Home Assistant still performs the authoritative comparison. If the
+  redirect host or callback shape changes, the helper fails closed and the
+  DevTools method still works.
 - The extension cannot paste into Home Assistant automatically without asking
   for much broader access. The user deliberately remains in control of that
   hand-off.

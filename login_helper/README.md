@@ -11,16 +11,18 @@ instructions remain the supported fallback.
 ## Easiest installation on Windows
 
 1. Download the ready-made
-   **[Somtoday Login Helper ZIP](../downloads/Somtoday-Login-Helper-0.1.2.zip)**.
+   **[Somtoday Login Helper ZIP](../downloads/Somtoday-Login-Helper-0.1.3.zip)**.
 2. Right-click the ZIP, choose **Extract all**, and open the extracted folder.
-3. Double-click **`INSTALLEREN-WINDOWS.cmd`** and choose Chrome or Edge.
+3. Double-click **`INSTALLEREN-WINDOWS.cmd`**, choose Chrome or Edge, select
+   the browser profile that will use the helper, and then continue the installer.
 4. Enable **Developer mode**, choose **Load unpacked**, and select the folder
    the installer opened for you.
 5. Pin **Somtoday Login Helper** from the browser's extensions menu.
 
 `LEESMIJ-EERST.txt` in the ZIP contains the same instructions in Dutch. The
-installer does not install software or change browser settings: it copies the
-folder path and opens the two pages you need.
+installer does not install software or change browser settings: it opens the
+extracted folder, copies the browser's extensions address to the clipboard, and
+opens that page after you have selected the intended browser profile.
 
 ### Manual installation
 
@@ -37,9 +39,9 @@ page.
 
 1. Start adding or reauthenticating the Somtoday integration in Home Assistant.
 2. Open the Somtoday login link from the Home Assistant form and sign in.
-3. When Chrome discards the final `somtoday://` redirect, the helper shows a
-   green `1` badge.
-4. Open the helper and choose **Kopiëren en wissen**.
+3. After Somtoday signs in, the helper automatically replaces the otherwise
+   unchanged login tab with its result page. A green `1` badge is the fallback.
+4. Choose **Kopiëren en wissen** on the result page (or open the helper manually).
 5. Paste the address into the Home Assistant form immediately.
 
 The authorization code is single-use and short-lived. If no badge appears,
@@ -56,6 +58,17 @@ npm test
 ```
 
 No package installation or network access is required.
+
+An optional end-to-end smoke test starts installed Chromium browsers with
+temporary empty profiles and a local simulated redirect:
+
+```console
+npm run test:browser
+```
+
+Current stable Chrome builds can refuse command-line loading of an unpacked
+extension; the smoke test reports that browser as skipped. Edge exercises the
+same Manifest V3 and Chromium APIs and must complete the full capture flow.
 
 See [SECURITY.md](SECURITY.md) for the threat model, permission rationale and
 known limitations.

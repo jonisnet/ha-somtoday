@@ -40,6 +40,9 @@ globalThis.chrome = {
     },
   },
   runtime: {
+    getURL(path) {
+      return `chrome-extension://test-extension/${path}`;
+    },
     onMessage: {
       addListener(listener) {
         listeners.message = listener;
@@ -62,7 +65,19 @@ globalThis.chrome = {
       },
     },
   },
+  tabs: {
+    async update(tabId, options) {
+      calls.tabUpdates ??= [];
+      calls.tabUpdates.push({ tabId, ...options });
+    },
+  },
   webRequest: {
+    onBeforeRedirect: {
+      addListener(listener, filter) {
+        listeners.redirect = listener;
+        calls.redirectFilter = filter;
+      },
+    },
     onHeadersReceived: {
       addListener(listener, filter, extraInfo) {
         listeners.headers = listener;
@@ -81,7 +96,8 @@ test("registers a read-only listener for Somtoday main-frame responses only", ()
     urls: ["https://inloggen.somtoday.nl/*"],
     types: ["main_frame"],
   });
-  assert.deepEqual(calls.extraInfo, ["responseHeaders"]);
+  assert.deepEqual(calls.extraInfo, ["responseHeaders", "extraHeaders"]);
+  assert.deepEqual(calls.redirectFilter, calls.filter);
   assert.deepEqual(calls.accessLevel, { accessLevel: "TRUSTED_CONTEXTS" });
 });
 
@@ -101,6 +117,19 @@ test("captures a valid Location header, schedules deletion and marks the action"
   assert.deepEqual(calls.badges.at(-1), { text: "1" });
   assert.deepEqual(calls.titles.at(-1), {
     title: "Somtoday-login gevonden",
+  });
+});
+
+test("captures the direct redirect event and opens a visible result page", async () => {
+  const callbackWithoutState =
+    "somtoday://nl.topicus.somtoday.leerling/oauth/callback?code=direct-code";
+  listeners.redirect({ redirectUrl: callbackWithoutState, tabId: 42 });
+  await settle();
+
+  assert.equal(sessionValues[STORAGE_KEY].redirectUrl, callbackWithoutState);
+  assert.deepEqual(calls.tabUpdates.at(-1), {
+    tabId: 42,
+    url: "chrome-extension://test-extension/popup.html",
   });
 });
 

@@ -36,8 +36,9 @@ export function findHeader(headers, wantedName) {
  * Return a validated callback or null.
  *
  * The full URL is kept because Home Assistant performs the authoritative
- * state check against the PKCE flow it created. We require a state-bearing
- * callback here as defense in depth, but never try to exchange the code.
+ * state check against the PKCE flow it created when Somtoday returns one. Some
+ * Somtoday login paths omit state, so the exact callback origin/path and its
+ * single-use code form the minimum accepted shape here.
  */
 export function parseSomtodayCallback(rawValue) {
   if (typeof rawValue !== "string") {
@@ -70,19 +71,20 @@ export function parseSomtodayCallback(rawValue) {
 
   const codes = parsed.searchParams.getAll("code");
   const states = parsed.searchParams.getAll("state");
-  if (codes.length !== 1 || states.length !== 1) {
+  if (codes.length !== 1 || states.length > 1) {
     return null;
   }
 
   const [code] = codes;
-  const [state] = states;
+  const state = states[0] ?? null;
   if (
     !code ||
-    !state ||
     code.length > MAX_PARAMETER_LENGTH ||
-    state.length > MAX_PARAMETER_LENGTH ||
     containsControlCharacter(code) ||
-    containsControlCharacter(state)
+    (state !== null &&
+      (!state ||
+        state.length > MAX_PARAMETER_LENGTH ||
+        containsControlCharacter(state)))
   ) {
     return null;
   }

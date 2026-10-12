@@ -5,10 +5,11 @@ INSTALLEREN OP WINDOWS (ongeveer 1 minuut)
 
 1. Klik met rechts op het gedownloade ZIP-bestand en kies Alles uitpakken.
 2. Open de uitgepakte map en dubbelklik op INSTALLEREN-WINDOWS.cmd.
-3. Kies Chrome of Edge.
-4. Zet Ontwikkelaarsmodus aan op de extensiepagina die wordt geopend.
-5. Klik op Uitgepakte extensie laden en kies de map die de installer opende.
-6. Zet Somtoday Login Helper vast via het puzzelstukje in de adresbalk.
+3. Kies Chrome of Edge en kies zo nodig eerst het juiste browserprofiel.
+4. Druk in de installer pas op een toets als dat browservenster zichtbaar is.
+5. Zet Ontwikkelaarsmodus aan op de extensiepagina die daarna wordt geopend.
+6. Klik op Uitgepakte extensie laden en kies de map die de installer opende.
+7. Zet Somtoday Login Helper vast via het puzzelstukje in de adresbalk.
 
 De installer installeert niets buiten deze map. Windows kan waarschuwen omdat
 het een gedownload opdrachtbestand is. Wil je dat bestand niet uitvoeren, volg
@@ -19,8 +20,9 @@ GEBRUIKEN
 
 1. Start het toevoegen of opnieuw aanmelden van Somtoday in Home Assistant.
 2. Open de Somtoday-loginlink en meld je normaal aan.
-3. Zodra het groene cijfer 1 op de helper verschijnt, open je de helper en klik
-   je op Kopiëren en wissen.
+3. De helper vervangt de ogenschijnlijk onveranderde loginpagina automatisch
+   door een zichtbare resultaatpagina. Klik daar op Kopiëren en wissen.
+   Verschijnt alleen een groen cijfer 1, open de helper dan handmatig.
 4. Plak de gekopieerde waarde direct in Home Assistant.
 
 De code is eenmalig en kort geldig. Verschijnt het groene cijfer niet, laad de
