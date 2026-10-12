@@ -4,7 +4,7 @@ All notable changes to the Somtoday integration are documented here.
 Development happens in beta releases (`X.Y.Z-beta.N`) between occasional real
 releases, where this file is consolidated into one summary per real version.
 
-## 0.1.4
+## 0.1.5
 
 ### Added
 - **An optional Manifest V3 Somtoday Login Helper feasibility release.** It
@@ -20,6 +20,10 @@ releases, where this file is consolidated into one summary per real version.
   implied: Chrome and Edge do not allow one-click installation from GitHub.
   Version 0.1.2 starts the selected browser in a new window and shows the exact
   internal extensions address as a fallback when Windows cannot open it.
+
+## 0.1.4
+
+### Added
 - **A blueprint for the schedule-change notification.** Phones are picked from
   a searchable device list and the notify service names are derived from them,
   so nobody has to type `notify.mobile_app_...` by hand — which is exactly
