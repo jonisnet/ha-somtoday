@@ -28,3 +28,6 @@ jobs:
           node-version: "22"
       - run: npm test
         working-directory: login_helper
+      - name: Build and verify Login Helper ZIP
+        shell: pwsh
+        run: ./login_helper/scripts/package.ps1 -OutputDirectory "${{ runner.temp }}/login-helper"

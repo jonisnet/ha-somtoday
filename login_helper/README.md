@@ -5,21 +5,33 @@ Edge. It is an optional companion to the Home Assistant integration: it makes
 the `somtoday://` OAuth redirect visible without asking users to search Chrome
 DevTools. It never signs in, exchanges a code or talks to Home Assistant.
 
-The extension is currently a technical feasibility release and is not
-published in a browser store. The existing DevTools instructions remain the
-supported fallback.
+The extension is not published in a browser store. The existing DevTools
+instructions remain the supported fallback.
 
-## Install from this repository
+## Easiest installation on Windows
 
-1. Download or clone this repository and keep the `login_helper` folder.
-2. Open `chrome://extensions` in Chrome, or `edge://extensions` in Edge.
-3. Enable **Developer mode**.
-4. Choose **Load unpacked** and select the `login_helper` folder (the folder
-   containing `manifest.json`).
+1. Download the ready-made
+   **[Somtoday Login Helper ZIP](../downloads/Somtoday-Login-Helper-0.1.1.zip)**.
+2. Right-click the ZIP, choose **Extract all**, and open the extracted folder.
+3. Double-click **`INSTALLEREN-WINDOWS.cmd`** and choose Chrome or Edge.
+4. Enable **Developer mode**, choose **Load unpacked**, and select the folder
+   the installer opened for you.
 5. Pin **Somtoday Login Helper** from the browser's extensions menu.
 
-Unpacked extensions do not update automatically. Pull or download the new
-repository version, then choose **Reload** on the browser's extensions page.
+`LEESMIJ-EERST.txt` in the ZIP contains the same instructions in Dutch. The
+installer does not install software or change browser settings: it copies the
+folder path and opens the two pages you need.
+
+### Manual installation
+
+If you do not want to run the Windows helper, extract the ZIP, open
+`chrome://extensions` in Chrome or `edge://extensions` in Edge, enable
+**Developer mode**, choose **Load unpacked**, and select the extracted folder
+containing `manifest.json`.
+
+Unpacked extensions do not update automatically. Download and extract the new
+ZIP, then load its folder or choose **Reload** on the browser's extensions
+page.
 
 ## Use it
 

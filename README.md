@@ -99,14 +99,15 @@ Older browsers showed an "unknown protocol" error; Chrome does not. Pressing
 sign-in again just restarts the whole login, which is why it asks for your
 password a second time.
 
-For Chrome and Edge, the optional
-[Somtoday Login Helper](login_helper/README.md) detects only this exact
-Somtoday callback and gives you a **Kopiëren en wissen** button. It lives in a
-separate folder in this repository, uses Manifest V3 and does not change or
-couple itself to the Home Assistant integration. It is currently installed
-manually as an unpacked extension; the linked guide covers installation,
-usage, permissions and security. The DevTools method below remains available
-without an extension.
+For Chrome and Edge, download the optional
+**[Somtoday Login Helper (ZIP)](downloads/Somtoday-Login-Helper-0.1.1.zip)**.
+Extract it and double-click **`INSTALLEREN-WINDOWS.cmd`**; it opens the browser
+page and folder you need. The helper detects only this exact Somtoday callback
+and gives you a **Kopiëren en wissen** button. It uses Manifest V3 and does not
+change or couple itself to the Home Assistant integration. The
+[full guide](login_helper/README.md) covers manual installation, usage,
+permissions and security. The DevTools method below remains available without
+an extension.
 
 The code is still there, in the redirect Chrome threw away. To read it out:
 

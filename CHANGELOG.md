@@ -13,6 +13,11 @@ releases, where this file is consolidated into one summary per real version.
   copy into the existing config flow. It lives in `login_helper/`, has its own
   dependency-free tests and security documentation, and does not alter the
   integration or replace the DevTools fallback.
+- **A downloadable Login Helper ZIP with a small Windows setup assistant.** It
+  opens the correct Chrome or Edge extensions page and the folder to select,
+  reducing installation to extracting the ZIP, enabling Developer mode and
+  choosing **Load unpacked**. Browser-store installation is deliberately not
+  implied: Chrome and Edge do not allow one-click installation from GitHub.
 - **A blueprint for the schedule-change notification.** Phones are picked from
   a searchable device list and the notify service names are derived from them,
   so nobody has to type `notify.mobile_app_...` by hand — which is exactly
