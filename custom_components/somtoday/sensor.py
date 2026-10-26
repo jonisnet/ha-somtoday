@@ -16,6 +16,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
 
 from . import SomtodayConfigEntry
+from .changelog import RETENTION
 from .const import MAX_ATTRIBUTE_ITEMS
 from .coordinator import (
     SomtodayCoordinator,
@@ -66,6 +67,7 @@ async def async_setup_entry(
                 SomtodayNextTestSensor(coordinator, student_id),
                 SomtodayActiveWeekSensor(coordinator, student_id),
                 SomtodayBaseWeekSensor(coordinator, student_id),
+                SomtodayScheduleChangesSensor(entry, student_id),
                 SomtodayLastUpdateSensor(coordinator, student_id),
             ]
         )
@@ -625,6 +627,54 @@ class SomtodayBaseWeekSensor(SomtodayStudentEntity, SensorEntity):
             "minimum_weeks": MIN_WEEKS_FOR_BASE,
             "lesson_count": len(slots),
             "days": days,
+        }
+
+
+class SomtodayScheduleChangesSensor(SomtodayStudentEntity, SensorEntity):
+    """When the latest timetable change came in, with the recent ones listed.
+
+    Somtoday itself never says when a lesson was changed, so the time shown is
+    the moment this integration first saw the change — the poll that noticed
+    it. With the default poll interval that is at most a few minutes after the
+    school made the change. A change made while Home Assistant was not running
+    is not detected at all: the first poll after a restart only sets the
+    baseline to compare against.
+
+    The state is a timestamp, so it reads as "3 minutes ago" on a dashboard;
+    the ``changes`` attribute lists every change of the last fourteen days,
+    newest first, each with its own ``detected_at``.
+    """
+
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+    # The list only matters right now; keeping two weeks of it in the recorder
+    # on every poll would be pure database growth.
+    _unrecorded_attributes = frozenset({"changes"})
+
+    def __init__(self, entry: SomtodayConfigEntry, student_id: int) -> None:
+        """Initialise the schedule-changes sensor."""
+        super().__init__(entry.runtime_data.coordinator, student_id, "schedule_changes")
+        self._change_log = entry.runtime_data.change_log
+
+    def _entries(self) -> list[dict[str, Any]]:
+        return self._change_log.entries(self._student_id)
+
+    @property
+    def native_value(self) -> datetime | None:
+        """Return when the most recent change came in, if any is logged."""
+        entries = self._entries()
+        return dt_util.parse_datetime(entries[0]["detected_at"]) if entries else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return the recent changes, newest first."""
+        entries = self._entries()
+        return {
+            # Lets the dashboard card find this sensor for an existing card
+            # that was set up before the sensor existed.
+            "student_id": self._student_id,
+            "change_count": len(entries),
+            "retention_days": RETENTION.days,
+            "changes": entries[:MAX_ATTRIBUTE_ITEMS],
         }
 
 

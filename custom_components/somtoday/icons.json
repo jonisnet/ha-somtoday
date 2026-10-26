@@ -24,6 +24,9 @@
       "next_test": {
         "default": "mdi:clipboard-text-clock-outline"
       },
+      "schedule_changes": {
+        "default": "mdi:calendar-alert"
+      },
       "last_update": {
         "default": "mdi:update"
       },

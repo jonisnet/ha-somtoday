@@ -125,6 +125,20 @@
       "base_week": {
         "name": "Basisrooster"
       },
+      "schedule_changes": {
+        "name": "Roosterwijzigingen",
+        "state_attributes": {
+          "change_count": {
+            "name": "Aantal wijzigingen"
+          },
+          "retention_days": {
+            "name": "Bewaard (dagen)"
+          },
+          "changes": {
+            "name": "Wijzigingen"
+          }
+        }
+      },
       "last_update": {
         "name": "Laatste update"
       }

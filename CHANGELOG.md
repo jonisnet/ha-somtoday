@@ -4,6 +4,17 @@ All notable changes to the Somtoday integration are documented here.
 Development happens in beta releases (`X.Y.Z-beta.N`) between occasional real
 releases, where this file is consolidated into one summary per real version.
 
+## 0.1.9
+
+### Added
+- **A Schedule changes sensor per student** (`Roosterwijzigingen`). Its state is
+  when the most recent timetable change came in; the `changes` attribute lists
+  every change of the last fourteen days, newest first, each with its
+  `detected_at` moment, what changed and what it was before. Somtoday never says
+  when a lesson was changed, so the moment shown is when the integration first
+  saw it. The log is kept in `.storage`, so it survives a restart. The Somtoday
+  Card shows it in its new *Changes* view.
+
 ## 0.1.8
 
 ### Fixed

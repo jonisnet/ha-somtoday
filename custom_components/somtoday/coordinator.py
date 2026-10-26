@@ -14,6 +14,7 @@ from homeassistant.util import dt as dt_util
 
 from .api import SomtodayApiClient, SomtodayApiError
 from .auth import SomtodayAuthError, SomtodayInvalidAuth
+from .changelog import SomtodayChangeLog
 from .changes import ChangeType, LessonChange, diff_lessons, snapshot
 from .const import (
     CONF_DAYS_AHEAD,
@@ -214,6 +215,9 @@ class SomtodayCoordinator(DataUpdateCoordinator[dict[int, StudentData]]):
         self._known_lessons: dict[int, dict[str, Lesson]] = {}
         self._known_horizon: date | None = None
         self._cached_device_ids: dict[int, str] = {}
+        # Keeps every detected change with the moment it came in. Optional so
+        # the coordinator still works on its own; set up in async_setup_entry.
+        self.change_log: SomtodayChangeLog | None = None
 
     async def _async_update_data(self) -> dict[int, StudentData]:
         """Fetch students, schedule and homework for the configured window.
@@ -320,6 +324,8 @@ class SomtodayCoordinator(DataUpdateCoordinator[dict[int, StudentData]]):
                 )
                 if changes:
                     self._fire(student_id, data, changes)
+                    if self.change_log is not None:
+                        self.change_log.record(student_id, changes, now)
             self._known_lessons[student_id] = snapshot(data.lessons)
 
         # Students who left the account should not keep a stale timetable.

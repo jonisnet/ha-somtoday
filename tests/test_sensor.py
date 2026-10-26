@@ -52,6 +52,7 @@ async def test_all_sensors_are_created(hass, setup_integration):
         "upcoming_work",
         "open_homework",
         "next_test",
+        "schedule_changes",
         "last_update",
     ):
         assert hass.states.get(entity_id(hass, key)) is not None
