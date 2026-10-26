@@ -199,6 +199,7 @@ are shown here, an English instance reads `next_lesson`, `next_school_day`,
 | `sensor.somtoday_<naam>_volgende_toets` | Due moment (timestamp) | `subject`, `topic`, `description`, `type` |
 | `sensor.somtoday_<naam>_deze_week` | Lessons in the active week | `week_number`, `deviation_count`, `days` (per day: lessons with `deviates` / `deviation`, plus `missing`) |
 | `sensor.somtoday_<naam>_basisrooster` | Recurring lessons in a normal week *(disabled by default)* | `weeks_observed`, `days` |
+| `sensor.somtoday_<naam>_roosterwijzigingen` | When the latest timetable change came in (timestamp) | `change_count`, `retention_days`, `changes` (newest first, each with `detected_at`, `type`, `subject`, `start`, `end`, and `previous` where something moved) |
 | `sensor.somtoday_<naam>_laatste_update` | Last successful poll (timestamp) | — |
 
 Notes on behaviour that is easy to misread:
@@ -215,6 +216,13 @@ Notes on behaviour that is easy to misread:
   date, including ended and cancelled lessons, until midnight.
 - **Undated homework is kept**, sorted last. Somtoday allows study items with no
   due date and hiding them would lose real work.
+- **Schedule changes show when they came in, not when the school made them.**
+  Somtoday does not say when a lesson was changed — not to this integration
+  and not in its own app. `detected_at` is the poll that first saw the change,
+  so at most one poll interval after the school made it. The last fourteen days
+  are kept in Home Assistant's `.storage` and survive a restart; a change made
+  while Home Assistant was not running is not picked up, because the first poll
+  after a restart only sets the baseline to compare against.
 - **An unrecognised lesson status is reported as `unknown`, never guessed.** If
   you see that, the raw Somtoday value is in the `raw_status` attribute and in
   diagnostics — please [open an issue](https://github.com/jonisnet/ha-somtoday/issues/new)

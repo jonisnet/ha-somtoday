@@ -125,6 +125,20 @@
       "base_week": {
         "name": "Normal week"
       },
+      "schedule_changes": {
+        "name": "Schedule changes",
+        "state_attributes": {
+          "change_count": {
+            "name": "Number of changes"
+          },
+          "retention_days": {
+            "name": "Kept for (days)"
+          },
+          "changes": {
+            "name": "Changes"
+          }
+        }
+      },
       "last_update": {
         "name": "Last update"
       }

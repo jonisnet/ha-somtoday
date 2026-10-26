@@ -16,6 +16,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import SomtodayApiClient
 from .auth import SomtodayAuth, SomtodayTokens
+from .changelog import SomtodayChangeLog
 from .const import (
     CONF_API_URL,
     CONF_REFRESH_TOKEN,
@@ -39,6 +40,7 @@ class SomtodayData:
     client: SomtodayApiClient
     coordinator: SomtodayCoordinator
     planner: SomtodayPlanner
+    change_log: SomtodayChangeLog
 
 
 type SomtodayConfigEntry = ConfigEntry[SomtodayData]
@@ -76,9 +78,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: SomtodayConfigEntry) -> 
     coordinator = SomtodayCoordinator(hass, entry, client)
     planner = SomtodayPlanner(hass, entry.entry_id, dict(entry.options))
     await planner.async_load()
+    # Loaded before the first refresh, so a change seen on that refresh is never
+    # written over by the stored log arriving late.
+    change_log = SomtodayChangeLog(hass, entry.entry_id)
+    await change_log.async_load()
+    coordinator.change_log = change_log
 
     entry.runtime_data = SomtodayData(
-        client=client, coordinator=coordinator, planner=planner
+        client=client, coordinator=coordinator, planner=planner, change_log=change_log
     )
 
     # The first refresh runs here, before the platforms are forwarded: from a
