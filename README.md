@@ -5,8 +5,6 @@
 [![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](https://github.com/jonisnet/ha-somtoday/blob/main/LICENSE)
 [![HA](https://img.shields.io/badge/Home%20Assistant-2024.11%2B-41bdf5?style=flat-square)](https://www.home-assistant.io)
 [![Downloads](https://img.shields.io/github/downloads/jonisnet/ha-somtoday/total?style=flat-square&label=downloads)](https://github.com/jonisnet/ha-somtoday/releases)
-[![Sponsor](https://img.shields.io/badge/sponsor-ea4aaa?style=flat-square&logo=githubsponsors&logoColor=white)](https://github.com/sponsors/jonisnet)
-[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-FFDD00?style=flat-square&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/jonisnet)
 
 > **⚠️ Unofficial API.** Somtoday never published this API, and does not
 > support it being used this way. The integration works today, but Topicus can
