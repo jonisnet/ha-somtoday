@@ -490,3 +490,7 @@ ruff check .
 The test suite needs a POSIX environment: Home Assistant imports `fcntl` and
 `resource` unconditionally, so the harness does not run natively on Windows.
 CI runs on Linux.
+
+---
+
+*Independent community project, not affiliated with or endorsed by Somtoday or Topicus. Use at your own risk.*
