@@ -1,7 +1,7 @@
 # Somtoday
 
 [![Version](https://img.shields.io/github/v/release/jonisnet/ha-somtoday?style=flat-square&label=version&color=blue)](https://github.com/jonisnet/ha-somtoday/releases/latest)
-[![HACS](https://img.shields.io/badge/HACS-Integration-orange?style=flat-square)](https://hacs.xyz)
+[![Marketplace](https://img.shields.io/badge/Marketplace-custom_repository-orange?style=flat-square)](https://www.home-assistant.io/integrations/marketplace/)
 [![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](https://github.com/jonisnet/ha-somtoday/blob/main/LICENSE)
 [![HA](https://img.shields.io/badge/Home%20Assistant-2024.11%2B-41bdf5?style=flat-square)](https://www.home-assistant.io)
 [![Downloads](https://img.shields.io/github/downloads/jonisnet/ha-somtoday/total?style=flat-square&label=downloads)](https://github.com/jonisnet/ha-somtoday/releases)
@@ -49,9 +49,13 @@ child's day side by side.
 
 ![Somtoday Card on a wide screen](https://raw.githubusercontent.com/jonisnet/ha-somtoday-card/main/preview/wide-dark.png)
 
-Install it from HACS as a **Dashboard** custom repository:
-`https://github.com/jonisnet/ha-somtoday-card`. All names and lessons in the
-screenshot are fictional.
+Install it from the Marketplace with **Add from link** (or, before Home Assistant
+2026.11, from HACS as a **Dashboard** custom repository):
+`https://github.com/jonisnet/ha-somtoday-card`.
+
+[![Open in the Marketplace](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=jonisnet&repository=ha-somtoday-card&category=plugin)
+
+All names and lessons in the screenshot are fictional.
 
 ## Requirements
 
@@ -63,13 +67,23 @@ screenshot are fictional.
 
 ## Installation
 
-### HACS
+### Via the Marketplace (recommended)
 
-1. Go to **HACS → Integrations**.
-2. Open the ⋮ menu, top right, and choose **Custom repositories**.
-3. Add `https://github.com/jonisnet/ha-somtoday`, category **Integration**.
-4. Click **Add**, then install **Somtoday**.
-5. Restart Home Assistant.
+Home Assistant 2026.11 and newer have HACS built in as the **Marketplace**.
+
+[![Open in the Marketplace](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=jonisnet&repository=ha-somtoday&category=integration)
+
+1. Click the button above, or go to **Settings → Marketplace → Add from link** and enter `https://github.com/jonisnet/ha-somtoday` (this needs the Marketplace's GitHub connection)
+2. Install **Somtoday**
+3. Restart Home Assistant when the Marketplace asks for it (a repair offers the restart)
+
+### Via HACS (Home Assistant before 2026.11)
+
+1. Go to **HACS → Integrations → ⋮ → Custom repositories**
+2. Add `https://github.com/jonisnet/ha-somtoday` with category **Integration**
+3. Search for **Somtoday**, install it and restart Home Assistant
+
+On updating to Home Assistant 2026.11, an installation from HACS moves to the Marketplace by itself.
 
 ### Manual
 
