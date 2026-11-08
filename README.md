@@ -1,10 +1,10 @@
 # Somtoday
 
-[![Version](https://img.shields.io/github/v/release/jonisnet/ha-somtoday?style=flat-square&label=version&color=blue)](https://github.com/jonisnet/ha-somtoday/releases/latest)
+[![Version](https://img.shields.io/github/v/release/jonisnet/ha-somtoday?style=flat-square&label=version&color=blue&cacheSeconds=86400)](https://github.com/jonisnet/ha-somtoday/releases/latest)
 [![Marketplace](https://img.shields.io/badge/Marketplace-custom_repository-orange?style=flat-square)](https://www.home-assistant.io/integrations/marketplace/)
 [![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](https://github.com/jonisnet/ha-somtoday/blob/main/LICENSE)
 [![HA](https://img.shields.io/badge/Home%20Assistant-2024.11%2B-41bdf5?style=flat-square)](https://www.home-assistant.io)
-[![Downloads](https://img.shields.io/github/downloads/jonisnet/ha-somtoday/total?style=flat-square&label=downloads)](https://github.com/jonisnet/ha-somtoday/releases)
+[![Downloads](https://img.shields.io/github/downloads/jonisnet/ha-somtoday/total?style=flat-square&label=downloads&cacheSeconds=86400)](https://github.com/jonisnet/ha-somtoday/releases)
 
 > **⚠️ Unofficial API.** Somtoday never published this API, and does not
 > support it being used this way. The integration works today, but Topicus can
