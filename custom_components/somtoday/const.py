@@ -114,6 +114,9 @@ class HomeworkType(StrEnum):
     HOMEWORK = "homework"      # Somtoday ``HUISWERK``
     TEST = "test"              # Somtoday ``TOETS``
     LARGE_TEST = "large_test"  # Somtoday ``GROTE_TOETS``
+    # Somtoday ``LESSTOF``: what was covered in class. Informative only, it is
+    # not something to hand in, so it never counts as open homework.
+    LESSON_MATERIAL = "lesson_material"
     UNKNOWN = "unknown"
 
 
@@ -122,6 +125,7 @@ HOMEWORK_TYPE_MAP = {
     "HUISWERK": HomeworkType.HOMEWORK,
     "TOETS": HomeworkType.TEST,
     "GROTE_TOETS": HomeworkType.LARGE_TEST,
+    "LESSTOF": HomeworkType.LESSON_MATERIAL,
 }
 
 # Both test flavours count as "a test" for the next-test sensor.

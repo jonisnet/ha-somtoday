@@ -106,6 +106,11 @@ class HomeworkItem:
         return self.kind in TEST_TYPES
 
     @property
+    def is_lesson_material(self) -> bool:
+        """Return whether this item only describes what was covered in class."""
+        return self.kind is HomeworkType.LESSON_MATERIAL
+
+    @property
     def display_name(self) -> str:
         """Return the best human label for this item."""
         return self.topic or self.subject or "Huiswerk"

@@ -4,6 +4,16 @@ All notable changes to the Somtoday integration are documented here.
 Development happens in beta releases (`X.Y.Z-beta.N`) between occasional real
 releases, where this file is consolidated into one summary per real version.
 
+## 0.1.10
+
+### Fixed
+- **Lesson material is recognised.** Somtoday marks some study-guide items as
+  `LESSTOF` (what was covered in class). These used to be logged as an
+  unrecognised type and reported as `unknown`, which also made them count as
+  open homework. They now have their own type, `lesson_material`, and no longer
+  count towards *Open homework*: they describe the lesson, they are not work to
+  hand in.
+
 ## 0.1.9
 
 ### Added

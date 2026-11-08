@@ -168,13 +168,17 @@ def open_homework(homework: list[HomeworkItem], now: datetime) -> list[HomeworkI
     """Return unfinished homework that is not yet past its due moment.
 
     Items without a due moment are kept: Somtoday does allow undated study
-    items, and silently hiding them would lose real work.
+    items, and silently hiding them would lose real work. Lesson material
+    (``LESSTOF``) is left out: it describes the lesson, it is not work to do.
     """
     return sorted(
         (
             item
             for item in homework
-            if not item.done and not item.is_test and (item.due is None or item.due >= now)
+            if not item.done
+            and not item.is_test
+            and not item.is_lesson_material
+            and (item.due is None or item.due >= now)
         ),
         key=lambda item: (item.due is None, item.due or now),
     )
