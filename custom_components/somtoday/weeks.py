@@ -218,11 +218,13 @@ def build_active_week(
                 {
                     "subject": lesson.subject,
                     "subject_short": lesson.subject_short,
+                    "title": lesson.title,
                     "teacher": lesson.teacher,
                     "location": lesson.location,
                     "start": lesson.start.isoformat(),
                     "end": lesson.end.isoformat(),
                     "period": lesson.period_start,
+                    "period_end": lesson.period_end,
                     "cancelled": lesson.is_cancelled,
                     "deviates": reason is not None,
                     "deviation": reason,

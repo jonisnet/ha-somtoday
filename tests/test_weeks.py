@@ -203,6 +203,9 @@ def test_an_extra_lesson_shows_as_a_deviation():
 
     week = build_active_week(lessons, base, now=at(1, 12, 0))
     assert week["days"][0]["lessons"][0]["deviation"] == "extra"
+    # The title travels along, for a block that has no subject of its own.
+    assert week["days"][0]["lessons"][0]["title"] == "217 - bijles"
+    assert week["days"][0]["lessons"][0]["period_end"] == 1
 
 
 def test_a_lesson_missing_this_week_is_listed_not_silently_absent():

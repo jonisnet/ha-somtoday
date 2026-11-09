@@ -5,6 +5,13 @@ Development happens in beta releases (`X.Y.Z-beta.N`) between occasional real
 releases, where this file is consolidated into one summary per real version.
 
 
+## 0.2.0-beta.4
+
+### Fixed
+- The week sensors and the timetable-change event now carry a lesson's
+  `title` (and the week sensors `period_end`), so the Somtoday Card names a
+  block without a subject ("STARR") on the Today, Tomorrow and Week views too.
+
 ## 0.2.0-beta.3
 
 ### Fixed
