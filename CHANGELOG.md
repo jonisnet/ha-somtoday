@@ -21,9 +21,10 @@ releases, where this file is consolidated into one summary per real version.
   absences, measures, messages, assignments and Somtoday notices. Confidential
   kinds carry ids only. What was seen survives a restart, and the first poll
   learns silently.
-- **A notification blueprint**, `somtoday_meldingen.yaml`, with a tick per kind
-  and a choice to include the content (the grade, the start of a message) or
-  only say that something new came in.
+- **A notification blueprint**, `somtoday_meldingen.yaml`: one automation for
+  every kind, with a section per kind to pick who gets it, who sees the content
+  (the grade, the start of a message) instead of only "something new came in",
+  and which child it is about.
 
 ### Changed
 - The planner's user list in the options is now a list of Home Assistant users

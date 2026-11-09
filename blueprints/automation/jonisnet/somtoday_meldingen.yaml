@@ -1,10 +1,11 @@
 blueprint:
-  name: Somtoday - melding bij nieuwe cijfers, berichten en meer
+  name: Somtoday - meldingen bij nieuwe cijfers, berichten en meer
   description: >-
-    Stuurt een bericht naar de telefoons die je kiest zodra er in Somtoday iets
-    nieuws binnenkomt: een cijfer, een afwezigheid of te-laat-melding, een
-    maatregel, een bericht van school, een nieuwe inleveropdracht of een
-    storingsmelding van Somtoday zelf. Per soort zet je het aan of uit.
+    Eén automatisering voor alle Somtoday-meldingen. Per soort melding (nieuw
+    cijfer, afwezigheid of te laat, maatregel, bericht van school, nieuwe
+    inleveropdracht, storing bij Somtoday) kies je in een eigen blok wie hem
+    krijgt, wie de inhoud zelf te zien krijgt en over welk kind het gaat.
+    Laat je bij een soort niemand staan, dan gaat die melding nergens heen.
 
 
     **Wat je nodig hebt:** de Somtoday-integratie (versie 0.2.0 of nieuwer) en
@@ -13,9 +14,10 @@ blueprint:
 
     **Privacy:** cijfers, afwezigheid, maatregelen en berichten staan niet in
     Home Assistant-entiteiten, zodat niet iedereen in huis ze kan lezen. Deze
-    automatisering haalt ze pas op op het moment van de melding, en stuurt ze
-    alleen naar de telefoons die jij hier kiest. Kies dus geen gedeelde tablet
-    als je de inhoud meestuurt.
+    automatisering haalt ze pas op op het moment van de melding, en laat de
+    inhoud alleen zien op de telefoons die je bij "inhoud" kiest. De andere
+    ontvangers krijgen alleen dát er iets nieuws is. Kies geen gedeelde tablet
+    voor de inhoud.
 
 
     Goed om te weten: bij de allereerste keer ophalen leert de integratie wat
@@ -24,97 +26,195 @@ blueprint:
   domain: automation
   source_url: https://github.com/jonisnet/ha-somtoday/blob/main/blueprints/automation/jonisnet/somtoday_meldingen.yaml
   input:
-    ontvangers:
-      name: 1. Wie krijgt de melding?
-      description: >-
-        Kies de telefoons die bericht moeten krijgen. Alleen apparaten met de
-        Home Assistant-app erop staan in de lijst.
-      selector:
-        device:
-          filter:
-            integration: mobile_app
-          multiple: true
-    dashboard:
-      name: 2. Welke pagina gaat open als je op de melding tikt?
-      description: >-
-        Het adres vanaf de schuine streep, bijvoorbeeld /lovelace/school. Geen
-        idee? Laat /lovelace/0 staan, dat is je standaard-dashboard.
-      default: /lovelace/0
-      selector:
-        select:
-          custom_value: true
-          mode: dropdown
-          options:
-            - /lovelace/0
-            - /lovelace/school
-    soorten:
-      name: 3. Waarover wil je bericht?
-      description: Vink aan waarover je een melding wilt krijgen.
-      default:
-        - grade
-        - registration
-        - measure
-        - message
-        - assignment
-        - announcement
-      selector:
-        select:
-          multiple: true
-          mode: list
-          options:
-            - label: Nieuw cijfer
-              value: grade
-            - label: Afwezigheid, te laat en dergelijke
-              value: registration
-            - label: Maatregel (nablijven, strafwerk)
-              value: measure
-            - label: Nieuw bericht van school
-              value: message
-            - label: Nieuwe inleveropdracht
-              value: assignment
-            - label: Storing of onderhoud bij Somtoday
-              value: announcement
-    inhoud:
-      name: 4. De inhoud meesturen?
-      description: >-
-        Aan: je ziet in de melding zelf het cijfer, de reden van afwezigheid of
-        het begin van het bericht. Uit: alleen dát er iets nieuws is, en je
-        kijkt zelf in de kaart.
-      default: true
-      selector:
-        boolean:
-    leerling:
-      name: 5. Over welk kind? (mag je overslaan)
-      description: >-
-        Leeg laten voor alle kinderen. Berichten van school en Somtoday-storingen
-        gelden voor het hele account en komen altijd door.
-      default: []
-      selector:
-        device:
-          filter:
-            integration: somtoday
-          multiple: false
+    algemeen:
+      name: Algemeen
+      icon: mdi:cog-outline
+      input:
+        dashboard:
+          name: Welke pagina gaat open als je op de melding tikt?
+          description: >-
+            Het adres vanaf de schuine streep, bijvoorbeeld /lovelace/school.
+            Geen idee? Laat /lovelace/0 staan, dat is je standaard-dashboard.
+          default: /lovelace/0
+          selector:
+            select:
+              custom_value: true
+              mode: dropdown
+              options:
+                - /lovelace/0
+                - /lovelace/school
+
+    cijfers:
+      name: Nieuw cijfer
+      icon: mdi:numeric-10-box-outline
+      collapsed: true
+      input:
+        cijfer_ontvangers:
+          name: Wie krijgt de melding?
+          description: Leeg laten = geen meldingen over cijfers.
+          default: []
+          selector: &telefoons
+            device:
+              filter:
+                integration: mobile_app
+              multiple: true
+        cijfer_inhoud:
+          name: Wie ziet het cijfer zelf in de melding?
+          description: >-
+            Alleen deze ontvangers zien vak, cijfer en weging. De rest krijgt
+            "Nieuw cijfer, open de Somtoday-kaart".
+          default: []
+          selector: *telefoons
+        cijfer_leerlingen:
+          name: Over welk kind?
+          description: Leeg laten = alle kinderen.
+          default: []
+          selector: &kinderen
+            device:
+              filter:
+                integration: somtoday
+              multiple: true
+
+    afwezigheid:
+      name: Afwezigheid, te laat en dergelijke
+      icon: mdi:account-clock-outline
+      collapsed: true
+      input:
+        afwezig_ontvangers:
+          name: Wie krijgt de melding?
+          description: >-
+            Ook uit de les gestuurd, huiswerk niet gemaakt en materiaal niet in
+            orde. Leeg laten = geen meldingen hierover.
+          default: []
+          selector: *telefoons
+        afwezig_inhoud:
+          name: Wie ziet de reden, het uur en het vak in de melding?
+          default: []
+          selector: *telefoons
+        afwezig_leerlingen:
+          name: Over welk kind?
+          description: Leeg laten = alle kinderen.
+          default: []
+          selector: *kinderen
+
+    maatregelen:
+      name: Maatregel (nablijven, strafwerk)
+      icon: mdi:gavel
+      collapsed: true
+      input:
+        maatregel_ontvangers:
+          name: Wie krijgt de melding?
+          description: Leeg laten = geen meldingen over maatregelen.
+          default: []
+          selector: *telefoons
+        maatregel_inhoud:
+          name: Wie ziet de maatregel zelf in de melding?
+          default: []
+          selector: *telefoons
+        maatregel_leerlingen:
+          name: Over welk kind?
+          description: Leeg laten = alle kinderen.
+          default: []
+          selector: *kinderen
+
+    berichten:
+      name: Bericht van school
+      icon: mdi:email-outline
+      collapsed: true
+      input:
+        bericht_ontvangers:
+          name: Wie krijgt de melding?
+          description: >-
+            Berichten horen bij het hele account, niet bij één kind. Leeg
+            laten = geen meldingen over berichten.
+          default: []
+          selector: *telefoons
+        bericht_inhoud:
+          name: Wie ziet afzender, onderwerp en het begin van het bericht?
+          default: []
+          selector: *telefoons
+
+    opdrachten:
+      name: Nieuwe inleveropdracht
+      icon: mdi:clipboard-text-clock-outline
+      collapsed: true
+      input:
+        opdracht_ontvangers:
+          name: Wie krijgt de melding?
+          description: >-
+            Vak, opdracht en inleverdatum staan er altijd in; dat is niet
+            vertrouwelijk. Leeg laten = geen meldingen over opdrachten.
+          default: []
+          selector: *telefoons
+        opdracht_leerlingen:
+          name: Over welk kind?
+          description: Leeg laten = alle kinderen.
+          default: []
+          selector: *kinderen
+
+    storingen:
+      name: Storing of onderhoud bij Somtoday
+      icon: mdi:alert-outline
+      collapsed: true
+      input:
+        storing_ontvangers:
+          name: Wie krijgt de melding?
+          description: Leeg laten = geen meldingen over storingen.
+          default: []
+          selector: *telefoons
 
 triggers:
   - trigger: event
     event_type: somtoday_new_record
 
 variables:
-  apparaten: !input ontvangers
   pad: !input dashboard
-  soorten: !input soorten
-  inhoud: !input inhoud
-  leerling_apparaat: !input leerling
+  instellingen:
+    grade:
+      ontvangers: !input cijfer_ontvangers
+      inhoud: !input cijfer_inhoud
+      leerlingen: !input cijfer_leerlingen
+    registration:
+      ontvangers: !input afwezig_ontvangers
+      inhoud: !input afwezig_inhoud
+      leerlingen: !input afwezig_leerlingen
+    measure:
+      ontvangers: !input maatregel_ontvangers
+      inhoud: !input maatregel_inhoud
+      leerlingen: !input maatregel_leerlingen
+    message:
+      ontvangers: !input bericht_ontvangers
+      inhoud: !input bericht_inhoud
+      leerlingen: []
+    # Niet vertrouwelijk: iedere ontvanger krijgt de inhoud.
+    assignment:
+      ontvangers: !input opdracht_ontvangers
+      inhoud: !input opdracht_ontvangers
+      leerlingen: !input opdracht_leerlingen
+    announcement:
+      ontvangers: !input storing_ontvangers
+      inhoud: !input storing_ontvangers
+      leerlingen: []
   soort: "{{ trigger.event.data.kind }}"
+  instelling: "{{ instellingen.get(soort, {}) }}"
   categorie: >-
     {{ {'grade': 'grades', 'registration': 'absences',
         'measure': 'measures', 'message': 'messages'}.get(soort, '') }}
-  services: >-
+  leerlingen: >-
+    {% set l = instelling.get('leerlingen') %}
+    {{ [l] if l is string and l else (l or []) }}
+  # Per ontvanger: welke notify-dienst, en of die de inhoud mag zien.
+  ontvangers: >-
+    {% set o = instelling.get('ontvangers') %}
+    {% set o = [o] if o is string and o else (o or []) %}
+    {% set i = instelling.get('inhoud') %}
+    {% set i = [i] if i is string and i else (i or []) %}
     {% set ns = namespace(items=[]) %}
-    {% for d in apparaten %}
-      {% set ns.items = ns.items + ['notify.mobile_app_' ~ (device_attr(d, 'name') | slugify)] %}
+    {% for d in o %}
+      {% set ns.items = ns.items + [{'dienst': 'notify.mobile_app_' ~ (device_attr(d, 'name') | slugify), 'vol': d in i}] %}
     {% endfor %}
     {{ ns.items }}
+  iemand_vol: "{{ ontvangers | selectattr('vol') | list | count > 0 }}"
   # "Somtoday (Fien Voorbeeld)" -> "Fien"
   kind_naam: >-
     {% set naam = device_attr(trigger.event.data.device_id, 'name') if trigger.event.data.device_id else '' %}
@@ -123,22 +223,22 @@ variables:
 
 conditions:
   - condition: template
-    value_template: "{{ soort in soorten }}"
+    value_template: "{{ ontvangers | count > 0 }}"
   - condition: template
     value_template: >-
-      {{ not leerling_apparaat
+      {{ not leerlingen
          or not trigger.event.data.device_id
-         or trigger.event.data.device_id == leerling_apparaat }}
+         or trigger.event.data.device_id in leerlingen }}
 
 actions:
   # De inhoud wordt nu pas opgehaald, bij de integratie zelf: zo staat een
   # cijfer of bericht nooit in een entiteit die iedereen in huis kan lezen.
-  # Altijd aangeroepen (bij niet-vertrouwelijke soorten komt er gewoon niets
-  # terug), zodat het antwoord in de rest van de automatisering beschikbaar is.
+  # Altijd aangeroepen (zonder inhoud komt er gewoon niets terug), zodat het
+  # antwoord in de rest van de automatisering beschikbaar is.
   - action: somtoday.get_records
     data:
       categories: ["{{ categorie or 'messages' }}"]
-      uids: "{{ trigger.event.data.uids if (inhoud and categorie) else ['-'] }}"
+      uids: "{{ trigger.event.data.uids if (iemand_vol and categorie) else ['-'] }}"
       limit: 20
     response_variable: gegevens
   - variables:
@@ -148,7 +248,7 @@ actions:
         {%- set ns = namespace(items=[]) -%}
         {%- if soort in ['assignment', 'announcement'] -%}
           {%- set ns.items = trigger.event.data.get('items', []) -%}
-        {%- elif inhoud and gegevens and gegevens.get('entries') -%}
+        {%- elif iemand_vol and gegevens and gegevens.get('entries') -%}
           {%- for entry in gegevens.entries -%}
             {%- if soort == 'message' -%}
               {%- set ns.items = ns.items + (entry.get('messages') or []) -%}
@@ -175,6 +275,7 @@ actions:
         {%- set n = namen.get(soort, ('Somtoday', 'Somtoday')) -%}
         {%- set basis = n[0] if (aantal | int) == 1 else (aantal ~ ' ' ~ n[1]) -%}
         {{ basis ~ (' - ' ~ kind_naam if kind_naam else '') }}
+      kort: Open de Somtoday-kaart om te kijken.
       bericht: >-
         {%- set soortnamen = {
           'unauthorised_absence': 'Ongeoorloofd afwezig', 'authorised_absence': 'Geoorloofd afwezig',
@@ -210,18 +311,18 @@ actions:
           {%- set ns.lines = ns.lines + [regel] -%}
         {%- endfor -%}
         {%- if not ns.lines -%}
-          {%- set ns.lines = ['Open de Somtoday-kaart om te kijken.'] -%}
+          {%- set ns.lines = [kort] -%}
         {%- elif items | count > 5 -%}
           {%- set ns.lines = ns.lines + ['en nog ' ~ (items | count - 5) ~ ' meer'] -%}
         {%- endif -%}
         {{ ns.lines | join('\n') }}
   - repeat:
-      for_each: "{{ services }}"
+      for_each: "{{ ontvangers }}"
       sequence:
-        - action: "{{ repeat.item }}"
+        - action: "{{ repeat.item.dienst }}"
           data:
             title: "{{ titel }}"
-            message: "{{ bericht }}"
+            message: "{{ bericht if repeat.item.vol else kort }}"
             data:
               clickAction: "{{ pad }}"
               url: "{{ pad }}"

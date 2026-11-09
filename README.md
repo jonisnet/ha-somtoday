@@ -272,10 +272,14 @@ reads, and has no way to send Somtoday's "mark as read".
 
 [![Import the blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fjonisnet%2Fha-somtoday%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fjonisnet%2Fsomtoday_meldingen.yaml)
 
-Pick the phones, tick what you want to hear about — new grade, absence or late
-arrival, measure, message from school, new assignment, Somtoday outage — and
-choose whether the notification shows the content (the grade itself, the start
-of the message) or only that something new came in.
+One automation covers everything. Each kind — new grade, absence or late
+arrival, measure, message from school, new assignment, Somtoday outage — has
+its own section where you pick:
+
+- **who gets it** (leave empty to skip that kind),
+- **who sees the content** — the grade itself, the start of the message; the
+  other recipients only hear that something new came in,
+- **which child** it is about (empty = all).
 
 Under the hood every poll compares against what it saw before and fires a
 `somtoday_new_record` event per kind. For grades, absences, measures and

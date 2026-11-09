@@ -23,19 +23,22 @@ BLUEPRINT = (
 )
 
 
-@pytest.fixture
-async def phone(hass):
-    """A Companion App phone called 'Telefoon' and its notify service."""
+def _mobile_app(hass, name):
     entry = MockConfigEntry(domain="mobile_app")
     entry.add_to_hass(hass)
     device = dr.async_get(hass).async_get_or_create(
-        config_entry_id=entry.entry_id, identifiers={("mobile_app", "x")}, name="Telefoon"
+        config_entry_id=entry.entry_id, identifiers={("mobile_app", name)}, name=name
     )
-    calls = async_mock_service(hass, "notify", "mobile_app_telefoon")
-    return device, calls
+    return device, async_mock_service(hass, "notify", f"mobile_app_{name.lower()}")
 
 
-async def _automation(hass, device_id, **inputs):
+@pytest.fixture
+async def phone(hass):
+    """A Companion App phone called 'Telefoon' and its notify service."""
+    return _mobile_app(hass, "Telefoon")
+
+
+async def _automation(hass, **inputs):
     target = Path(hass.config.path("blueprints/automation/jonisnet"))
     target.mkdir(parents=True, exist_ok=True)
     shutil.copy(BLUEPRINT, target / BLUEPRINT.name)
@@ -47,7 +50,7 @@ async def _automation(hass, device_id, **inputs):
                 "id": "somtoday_meldingen",
                 "use_blueprint": {
                     "path": f"jonisnet/{BLUEPRINT.name}",
-                    "input": {"ontvangers": [device_id], **inputs},
+                    "input": inputs,
                 },
             }
         },
@@ -58,7 +61,7 @@ async def _automation(hass, device_id, **inputs):
 async def test_new_grade_with_content(hass, config_entry, mock_api, phone):
     device, calls = phone
     await _setup(hass, config_entry, mock_api)
-    await _automation(hass, device.id)
+    await _automation(hass, cijfer_ontvangers=[device.id], cijfer_inhoud=[device.id])
     progress_only(mock_api, [grade(), grade(700002, "5,0", 5.0, entered="2026-11-09T10:00:00")])
     await config_entry.runtime_data.coordinator.async_refresh()
     await hass.async_block_till_done()
@@ -73,7 +76,7 @@ async def test_new_grade_with_content(hass, config_entry, mock_api, phone):
 async def test_without_content_only_says_something_is_new(hass, config_entry, mock_api, phone):
     device, calls = phone
     await _setup(hass, config_entry, mock_api)
-    await _automation(hass, device.id, inhoud=False)
+    await _automation(hass, cijfer_ontvangers=[device.id])
     progress_only(mock_api, [grade(), grade(700002, "5,0", 5.0)])
     await config_entry.runtime_data.coordinator.async_refresh()
     await hass.async_block_till_done()
@@ -86,7 +89,12 @@ async def test_without_content_only_says_something_is_new(hass, config_entry, mo
 async def test_message_and_assignment(hass, config_entry, mock_api, phone):
     device, calls = phone
     await _setup(hass, config_entry, mock_api)
-    await _automation(hass, device.id)
+    await _automation(
+        hass,
+        bericht_ontvangers=[device.id],
+        bericht_inhoud=[device.id],
+        opdracht_ontvangers=[device.id],
+    )
     mock_api.async_get_conversations.return_value = [
         {"boodschappen": [_message(1)]},
         {"boodschappen": [_message(5)]},
@@ -104,7 +112,38 @@ async def test_message_and_assignment(hass, config_entry, mock_api, phone):
 async def test_unticked_kind_stays_silent(hass, config_entry, mock_api, phone):
     device, calls = phone
     await _setup(hass, config_entry, mock_api)
-    await _automation(hass, device.id, soorten=["message"])
+    await _automation(hass, bericht_ontvangers=[device.id])
+    progress_only(mock_api, [grade(), grade(700002, "5,0", 5.0)])
+    await config_entry.runtime_data.coordinator.async_refresh()
+    await hass.async_block_till_done()
+    assert calls == []
+
+
+async def test_content_per_person(hass, config_entry, mock_api, phone):
+    device, calls = phone
+    tablet, tablet_calls = _mobile_app(hass, "Tablet")
+    await _setup(hass, config_entry, mock_api)
+    await _automation(
+        hass, cijfer_ontvangers=[device.id, tablet.id], cijfer_inhoud=[device.id]
+    )
+    progress_only(mock_api, [grade(), grade(700002, "5,0", 5.0)])
+    await config_entry.runtime_data.coordinator.async_refresh()
+    await hass.async_block_till_done()
+
+    assert len(calls) == 1 and "5,0" in calls[0].data["message"]
+    assert len(tablet_calls) == 1 and "5,0" not in tablet_calls[0].data["message"]
+    assert tablet_calls[0].data["title"] == calls[0].data["title"]
+
+
+async def test_other_child_stays_silent(hass, config_entry, mock_api, phone):
+    device, calls = phone
+    await _setup(hass, config_entry, mock_api)
+    other = dr.async_get(hass).async_get_or_create(
+        config_entry_id=config_entry.entry_id, identifiers={("somtoday", "ander-kind")}
+    )
+    await _automation(
+        hass, cijfer_ontvangers=[device.id], cijfer_leerlingen=[other.id]
+    )
     progress_only(mock_api, [grade(), grade(700002, "5,0", 5.0)])
     await config_entry.runtime_data.coordinator.async_refresh()
     await hass.async_block_till_done()
