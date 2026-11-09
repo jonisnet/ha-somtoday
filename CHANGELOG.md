@@ -5,7 +5,20 @@ Development happens in beta releases (`X.Y.Z-beta.N`) between occasional real
 releases, where this file is consolidated into one summary per real version.
 
 
-## Unreleased
+## 0.2.0-beta.2
+
+### Added
+- **Both levels of a dual-level class.** Somtoday grades vmbo BB/KB classes on
+  two levels per test. Grades in `somtoday.get_records` gain `level`,
+  `alt_level`, `alt_result`, `alt_value` and `alt_sufficient`; subject averages
+  gain `alt_value` and `alt_sufficient`. The notification blueprint gets a
+  *level* choice for grades.
+- Lessons carry their `title`, so a block without a subject ("STARR") can be
+  named.
+
+### Fixed
+- **The other level's subject average was wrong**: it repeated the main
+  figure. It is now read from the right field.
 
 ### Changed
 - **The notification blueprint has a section per kind**: who gets it, who sees

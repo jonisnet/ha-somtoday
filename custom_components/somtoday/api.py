@@ -214,6 +214,7 @@ class SomtodayApiClient:
                 ("type", "Werkstukcijferkolom"),
                 ("type", "Advieskolom"),
                 ("additional", "vaknaam"),
+                ("additional", "naamalternatiefniveau"),
                 ("sort", "desc-geldendResultaatCijferInvoer"),
             ],
         )

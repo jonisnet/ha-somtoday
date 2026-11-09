@@ -65,6 +65,25 @@ blueprint:
             "Nieuw cijfer, open de Somtoday-kaart".
           default: []
           selector: *telefoons
+        cijfer_niveau:
+          name: Welk niveau staat in de melding?
+          description: >-
+            Voor klassen met twee niveaus (zoals vmbo BB/KB) geeft Somtoday per
+            toets twee cijfers. Kies welk niveau je kind volgt. Zonder tweede
+            niveau staat er gewoon het ene cijfer.
+          default: both_main_first
+          selector:
+            select:
+              mode: dropdown
+              options:
+                - label: Beide, eerste niveau voorop (bijv. "BB 5,3 / KB 4,4")
+                  value: both_main_first
+                - label: Beide, tweede niveau voorop (bijv. "KB 4,4 / BB 5,3")
+                  value: both_alt_first
+                - label: Alleen het eerste niveau (bijv. BB)
+                  value: main
+                - label: Alleen het tweede niveau (bijv. KB)
+                  value: alt
         cijfer_tab:
           name: Welke tab van de Somtoday-kaart gaat open?
           description: >-
@@ -242,6 +261,7 @@ variables:
       inhoud: !input cijfer_inhoud
       leerlingen: !input cijfer_leerlingen
       tab: !input cijfer_tab
+      niveau: !input cijfer_niveau
     registration:
       ontvangers: !input afwezig_ontvangers
       inhoud: !input afwezig_inhoud
@@ -371,7 +391,21 @@ actions:
           {%- set t = (moment | as_datetime | as_local) if moment else none -%}
           {%- set wanneer = (dagen[t.weekday()] ~ ' ' ~ t.day ~ ' ' ~ maanden[t.month - 1]) if t else '' -%}
           {%- if soort == 'grade' -%}
-            {%- set regel = (i.subject or 'Vak') ~ ': ' ~ (i.result or '?')
+            {%- set niveau = instelling.get('niveau') or 'both_main_first' -%}
+            {%- set hoofd = ((i.level ~ ' ') if i.get('level') else '') ~ (i.result or '?') -%}
+            {%- set ander = ((i.alt_level ~ ' ') if i.get('alt_level') else '') ~ (i.get('alt_result') or '?') -%}
+            {%- if not i.get('alt_result') -%}
+              {%- set cijfer = i.result or '?' -%}
+            {%- elif niveau == 'main' -%}
+              {%- set cijfer = i.result or '?' -%}
+            {%- elif niveau == 'alt' -%}
+              {%- set cijfer = i.alt_result -%}
+            {%- elif niveau == 'both_alt_first' -%}
+              {%- set cijfer = ander ~ ' / ' ~ hoofd -%}
+            {%- else -%}
+              {%- set cijfer = hoofd ~ ' / ' ~ ander -%}
+            {%- endif -%}
+            {%- set regel = (i.subject or 'Vak') ~ ': ' ~ cijfer
                 ~ (' (weging ' ~ (i.weight | round(1) | string | replace('.0', '')) ~ ')' if i.weight else '')
                 ~ (' - ' ~ i.description if i.description else '') -%}
           {%- elif soort == 'registration' -%}

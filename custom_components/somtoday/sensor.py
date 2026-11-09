@@ -208,6 +208,8 @@ def _lesson_attributes(lesson: Lesson) -> dict[str, Any]:
     return {
         "subject": lesson.subject,
         "subject_short": lesson.subject_short,
+        # A block without a subject (a mentor hour, "STARR") only has a title.
+        "title": lesson.title,
         "teacher": lesson.teacher,
         "location": lesson.location,
         "start": lesson.start.isoformat(),

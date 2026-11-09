@@ -74,6 +74,28 @@ async def test_new_grade_with_content(hass, config_entry, mock_api, phone):
     assert data["data"]["clickAction"].startswith("/lovelace/0?somtoday_view=grades&somtoday_student=")
 
 
+@pytest.mark.parametrize(
+    ("niveau", "expected"),
+    [
+        (None, "wi: 5,3 / KB 4,4"),
+        ("both_alt_first", "wi: KB 4,4 / 5,3"),
+        ("alt", "wi: 4,4"),
+        ("main", "wi: 5,3"),
+    ],
+)
+async def test_grade_level(hass, config_entry, mock_api, phone, niveau, expected):
+    device, calls = phone
+    await _setup(hass, config_entry, mock_api)
+    extra = {"cijfer_niveau": niveau} if niveau else {}
+    await _automation(hass, cijfer_ontvangers=[device.id], cijfer_inhoud=[device.id], **extra)
+    progress_only(mock_api, [grade(), grade(700002, "5,3", 5.3, entered="2026-11-09T10:00:00", alt="4,4")])
+    await config_entry.runtime_data.coordinator.async_refresh()
+    await hass.async_block_till_done()
+
+    assert len(calls) == 1
+    assert expected + " (weging 2)" in calls[0].data["message"]
+
+
 async def test_without_content_only_says_something_is_new(hass, config_entry, mock_api, phone):
     device, calls = phone
     await _setup(hass, config_entry, mock_api)

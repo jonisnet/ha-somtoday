@@ -34,10 +34,15 @@ from custom_components.somtoday.records import (
 from .payloads import STUDENT_A_ID, STUDENT_B_ID, link
 
 
-def grade(uid=700001, result="7,5", value=7.5, short="wi", entered="2026-11-07T22:20:13"):
-    return {
+def grade(uid=700001, result="7,5", value=7.5, short="wi", entered="2026-11-07T22:20:13", alt=None):
+    extra = {
+        "cijferAlternatief": float(alt.replace(",", ".")),
+        "formattedResultaatAlternatief": alt,
+        "isVoldoendeAlternatief": float(alt.replace(",", ".")) >= 5.5,
+    } if alt else {}
+    return extra | {
         "links": [link(uid, "resultaten.RGeldendVoortgangsdossierResultaat")],
-        "additionalObjects": {"vaknaam": short},
+        "additionalObjects": {"vaknaam": short} | ({"naamalternatiefniveau": "KB"} if alt else {}),
         "cijfer": value,
         "formattedResultaat": result,
         "isVoldoende": True,
@@ -93,6 +98,16 @@ def test_parse_grade_maps_subject_names():
     assert parsed.weight == 2
     assert parsed.resit is None
     assert parsed.entered.year == 2026
+
+
+def test_parse_grade_reads_the_other_level():
+    """A dual-level class gets a second result per test, as on 6 Nov science."""
+    parsed = parse_grade(grade(result="5,3", value=5.3, alt="4,4"))
+    assert (parsed.result, parsed.alt_level, parsed.alt_result) == ("5,3", "KB", "4,4")
+    assert parsed.alt_value == 4.4
+    assert parsed.alt_sufficient is False
+    plain = parse_grade(grade())
+    assert plain.alt_level is None and plain.alt_result is None
 
 
 def test_parse_grade_without_any_result_is_dropped():
@@ -153,15 +168,23 @@ def test_parse_averages():
                 "vakkeuze": {"vak": {"afkorting": "en", "naam": "Engelse taal"}},
                 "niveauOmschrijving": "BB",
                 "afwijkendNiveauOmschrijving": "KB",
-                "voortgangsdossierResultaat": {"cijfer": 8.9, "formattedResultaat": "8,9", "isVoldoende": True},
-                "voortgangsdossierResultaatAfwijkend": {"formattedResultaat": "8,6"},
+                # Real shape: the other level is in the *Alternatief fields;
+                # ...Afwijkend repeats the main figure and must be ignored.
+                "voortgangsdossierResultaat": {
+                    "cijfer": 8.9, "formattedResultaat": "8,9", "isVoldoende": True,
+                    "cijferAlternatief": 8.6, "formattedResultaatAlternatief": "8,6",
+                    "isVoldoendeAlternatief": True,
+                },
+                "voortgangsdossierResultaatAfwijkend": {"cijfer": 8.9, "formattedResultaat": "8,9"},
             }
         ],
     }
     averages, overall = parse_averages(payload)
     assert overall == 7.2
     assert averages[0].subject == "Engelse taal"
+    assert averages[0].result == "8,9"
     assert averages[0].alt_result == "8,6"
+    assert averages[0].alt_value == 8.6
 
 
 def test_parse_measure():

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timedelta
 from typing import Any, TypeVar
 
@@ -182,7 +182,7 @@ async def async_fetch_student_extras(
             reverse=True,
         )
         # Averages only move when a result does, so refetch them on change.
-        key = frozenset(f"{g.uid}:{g.result}" for g in extras.grades)
+        key = frozenset(f"{g.uid}:{g.result}:{g.alt_result}" for g in extras.grades)
         if key != extras.averages_key and extras.placement and extras.placement.uuid:
             uuid = extras.placement.uuid
             ok, raw = await optional("averages", lambda: client.async_get_averages(uuid))
@@ -190,6 +190,13 @@ async def async_fetch_student_extras(
                 extras.available.add("averages")
                 extras.averages, extras.overall_average = parse_averages(raw)
                 extras.averages_key = key
+        # A grade only names its alternative level; the main one is per subject.
+        levels = {a.subject_short: a.level for a in extras.averages if a.level}
+        if levels:
+            extras.grades = [
+                replace(g, level=levels.get(g.subject_short)) if g.alt_level else g
+                for g in extras.grades
+            ]
 
     ok, raw = await optional("absences", lambda: client.async_get_registrations(student_id))
     if ok:

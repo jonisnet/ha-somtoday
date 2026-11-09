@@ -292,6 +292,13 @@ class Grade:
     resit: str | None
     entered: datetime | None
     exam_file: bool = False
+    # A dual-level class (vmbo BB/KB and the like) is graded twice per test:
+    # Somtoday's main result and an "alternative" one for the other level.
+    level: str | None = None
+    alt_level: str | None = None
+    alt_result: str | None = None
+    alt_value: float | None = None
+    alt_sufficient: bool | None = None
 
     def as_dict(self) -> dict[str, Any]:
         """Return the service-response shape."""
@@ -310,6 +317,11 @@ class Grade:
             "resit": self.resit,
             "entered": _iso(self.entered),
             "exam_file": self.exam_file,
+            "level": self.level,
+            "alt_level": self.alt_level,
+            "alt_result": self.alt_result,
+            "alt_value": self.alt_value,
+            "alt_sufficient": self.alt_sufficient,
         }
 
 
@@ -324,8 +336,10 @@ def parse_grade(
     value = _num(payload.get("cijfer"))
     if uid is None or (result is None and value is None):
         return None
-    short = clean_text((payload.get("additionalObjects") or {}).get("vaknaam"))
+    extra = payload.get("additionalObjects") or {}
+    short = clean_text(extra.get("vaknaam"))
     herkansing = payload.get("herkansing")
+    alt_result, alt_value, alt_sufficient = _alternative(payload)
     return Grade(
         uid=str(uid),
         subject=(subjects or {}).get(short or "") or short,
@@ -345,6 +359,22 @@ def parse_grade(
             payload.get("datumInvoer") or payload.get("datumInvoerEerstePoging")
         ),
         exam_file=exam_file,
+        alt_level=clean_text(extra.get("naamalternatiefniveau"))
+        if alt_result or alt_value is not None
+        else None,
+        alt_result=alt_result,
+        alt_value=alt_value,
+        alt_sufficient=alt_sufficient,
+    )
+
+
+def _alternative(payload: dict[str, Any]) -> tuple[str | None, float | None, bool | None]:
+    """Return the other-level result Somtoday puts beside the main one."""
+    sufficient = payload.get("isVoldoendeAlternatief")
+    return (
+        clean_text(payload.get("formattedResultaatAlternatief")),
+        _num(payload.get("cijferAlternatief")),
+        sufficient if isinstance(sufficient, bool) else None,
     )
 
 
@@ -360,6 +390,8 @@ class SubjectAverage:
     level: str | None
     alt_level: str | None
     alt_result: str | None
+    alt_value: float | None = None
+    alt_sufficient: bool | None = None
 
     def as_dict(self) -> dict[str, Any]:
         """Return the service-response shape."""
@@ -372,6 +404,8 @@ class SubjectAverage:
             "level": self.level,
             "alt_level": self.alt_level,
             "alt_result": self.alt_result,
+            "alt_value": self.alt_value,
+            "alt_sufficient": self.alt_sufficient,
         }
 
 
@@ -385,7 +419,9 @@ def parse_averages(payload: dict[str, Any] | None) -> tuple[list[SubjectAverage]
             continue
         vak = (item.get("vakkeuze") or {}).get("vak") or {}
         main = item.get("voortgangsdossierResultaat") or {}
-        alt = item.get("voortgangsdossierResultaatAfwijkend") or {}
+        # The other level's average sits in the *Alternatief fields of the main
+        # result; ``voortgangsdossierResultaatAfwijkend`` just repeats it.
+        alt_result, alt_value, alt_sufficient = _alternative(main)
         averages.append(
             SubjectAverage(
                 subject=clean_text(vak.get("naam")),
@@ -397,7 +433,9 @@ def parse_averages(payload: dict[str, Any] | None) -> tuple[list[SubjectAverage]
                 else None,
                 level=clean_text(item.get("niveauOmschrijving")),
                 alt_level=clean_text(item.get("afwijkendNiveauOmschrijving")),
-                alt_result=clean_text(alt.get("formattedResultaat")),
+                alt_result=alt_result,
+                alt_value=alt_value,
+                alt_sufficient=alt_sufficient,
             )
         )
     return averages, _num(payload.get("voortgangsdossierGemiddelde"))
