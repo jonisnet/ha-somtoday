@@ -5,6 +5,12 @@ Development happens in beta releases (`X.Y.Z-beta.N`) between occasional real
 releases, where this file is consolidated into one summary per real version.
 
 
+## 0.2.0-beta.3
+
+### Fixed
+- A dual-level grade now also names its main level (e.g. "BB"): grades carry
+  the subject name where averages carry the abbreviation, so the match failed.
+
 ## 0.2.0-beta.2
 
 ### Added

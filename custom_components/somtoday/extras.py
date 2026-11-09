@@ -8,6 +8,7 @@ fails on its own and the category is simply reported as unavailable.
 from __future__ import annotations
 
 import logging
+from collections import Counter
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timedelta
@@ -191,12 +192,32 @@ async def async_fetch_student_extras(
                 extras.averages, extras.overall_average = parse_averages(raw)
                 extras.averages_key = key
         # A grade only names its alternative level; the main one is per subject.
-        levels = {a.subject_short: a.level for a in extras.averages if a.level}
-        if levels:
-            extras.grades = [
-                replace(g, level=levels.get(g.subject_short)) if g.alt_level else g
-                for g in extras.grades
-            ]
+        # Grades carry the subject *name* where averages have the abbreviation,
+        # so match on either, and fall back to the class's usual main level.
+        levels: dict[str, str] = {}
+        for avg in extras.averages:
+            if avg.level:
+                for key in (avg.subject_short, avg.subject):
+                    if key:
+                        levels[key.casefold()] = avg.level
+        usual = Counter(levels.values()).most_common(1)
+        default = usual[0][0] if usual else None
+        extras.grades = [
+            replace(
+                g,
+                level=next(
+                    (
+                        levels[key.casefold()]
+                        for key in (g.subject_short, g.subject)
+                        if key and key.casefold() in levels
+                    ),
+                    default,
+                ),
+            )
+            if g.alt_level
+            else g
+            for g in extras.grades
+        ]
 
     ok, raw = await optional("absences", lambda: client.async_get_registrations(student_id))
     if ok:

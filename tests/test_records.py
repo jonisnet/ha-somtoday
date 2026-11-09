@@ -284,6 +284,33 @@ async def test_static_data_is_reused_and_averages_only_refetched_on_change():
     assert client.async_get_averages.await_count == 2
 
 
+async def test_grade_gets_the_main_level_from_the_averages():
+    """Grades name the subject ("science"), averages abbreviate it ("sci")."""
+    average = {
+        "vakkeuze": {"vak": {"afkorting": "sci", "naam": "science"}},
+        "niveauOmschrijving": "BB",
+        "afwijkendNiveauOmschrijving": "KB",
+        "voortgangsdossierResultaat": {"cijfer": 6.3, "formattedResultaat": "6,3"},
+    }
+    client = _client(
+        async_get_grades=[
+            grade(result="5,3", value=5.3, short="science", alt="4,4"),
+            grade(700002, short="ne", alt="6,0"),
+            grade(700003, short="lo"),
+        ],
+        async_get_averages={"gemiddelden": [average], "voortgangsdossierGemiddelde": 7.0},
+    )
+    extras = await async_fetch_student_extras(
+        client, STUDENT_A_ID, None, datetime(2026, 11, 9, 12, tzinfo=timezone.utc)
+    )
+    levels = {g.subject_short: (g.level, g.alt_level) for g in extras.grades}
+    assert levels["science"] == ("BB", "KB")
+    # No average for that subject: the class's usual main level.
+    assert levels["ne"] == ("BB", "KB")
+    # A single-level grade stays without levels.
+    assert levels["lo"] == (None, None)
+
+
 async def test_assignments_for_another_child_are_filtered():
     client = _client(async_get_assignments=[assignment(1, students=[STUDENT_B_ID]), assignment(2)])
     extras = await async_fetch_student_extras(client, STUDENT_A_ID, None, datetime.now(timezone.utc))
