@@ -140,7 +140,10 @@ async def test_next_school_day_summarises_the_day(hass, config_entry, mock_api):
     assert len(state.attributes["lessons"]) == 3
 
 
-async def test_today_summarises_the_current_date(hass, config_entry, mock_api):
+async def test_today_summarises_the_current_date(hass, config_entry, mock_api, freezer):
+    # Midday, so the second lesson (one to two hours from now) can never spill
+    # over into tomorrow — this test used to fail when run near midnight.
+    freezer.move_to(dt_util.now().replace(hour=12, minute=0, second=0, microsecond=0))
     await setup_with(
         hass,
         config_entry,
