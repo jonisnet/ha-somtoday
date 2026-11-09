@@ -208,3 +208,4 @@ def test_status_and_type_mapping_edge_cases():
     assert map_lesson_status("actief") is LessonStatus.SCHEDULED
     assert map_homework_type(None) is HomeworkType.UNKNOWN
     assert map_homework_type("toets") is HomeworkType.TEST
+    assert map_homework_type("LESSTOF") is HomeworkType.LESSON_MATERIAL

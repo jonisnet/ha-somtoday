@@ -224,6 +224,7 @@ def test_open_homework_excludes_done_tests_and_overdue():
         homework_item("done", due=at(8, 8, 30), done=True),
         homework_item("test", due=at(8, 8, 30), kind=HomeworkType.TEST),
         homework_item("overdue", due=at(6, 8, 30)),
+        homework_item("lesstof", due=at(8, 8, 30), kind=HomeworkType.LESSON_MATERIAL),
     ]
     assert [item.uid for item in open_homework(items, now)] == ["open"]
 
