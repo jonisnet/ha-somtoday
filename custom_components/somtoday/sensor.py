@@ -29,6 +29,7 @@ from .coordinator import (
 )
 from .entity import SomtodayStudentEntity
 from .models import HomeworkItem, Lesson
+from .records import Announcement, Holiday
 from .weeks import (
     MIN_WEEKS_FOR_BASE,
     build_active_week,
@@ -69,6 +70,10 @@ async def async_setup_entry(
                 SomtodayBaseWeekSensor(coordinator, student_id),
                 SomtodayScheduleChangesSensor(entry, student_id),
                 SomtodayLastUpdateSensor(coordinator, student_id),
+                SomtodayNextHolidaySensor(coordinator, student_id),
+                SomtodaySchoolClassSensor(coordinator, student_id),
+                SomtodayAssignmentsSensor(coordinator, student_id),
+                SomtodayAnnouncementsSensor(coordinator, student_id),
             ]
         )
     async_add_entities(entities)
@@ -225,6 +230,8 @@ def _homework_attributes(item: HomeworkItem) -> dict[str, Any]:
         "raw_type": item.raw_kind,
         "due": item.due.isoformat() if item.due else None,
         "done": item.done,
+        "time_indication": item.time_indication,
+        "links": [dict(link) for link in item.links],
     }
 
 
@@ -696,3 +703,205 @@ class SomtodayLastUpdateSensor(SomtodayStudentEntity, SensorEntity):
     def native_value(self) -> datetime | None:
         """Return the timestamp of the last successful poll."""
         return self.coordinator.last_success_time
+
+
+# --------------------------------------------------------------------------
+# School records that are fine for the whole household. Grades, absences,
+# measures and messages are deliberately NOT here: entity states are readable
+# by every user, so those go through the somtoday.get_records service.
+# --------------------------------------------------------------------------
+
+
+def current_or_next_holiday(holidays: list[Holiday], today: date) -> Holiday | None:
+    """Return the holiday in progress, or else the next one to start."""
+    for holiday in holidays:
+        if holiday.end >= today:
+            return holiday
+    return None
+
+
+class SomtodayNextHolidaySensor(SomtodayStudentEntity, SensorEntity):
+    """The next (or current) school holiday."""
+
+    _attr_device_class = SensorDeviceClass.DATE
+    _unrecorded_attributes = frozenset({"holidays", "school_year"})
+
+    def __init__(self, coordinator: SomtodayCoordinator, student_id: int) -> None:
+        """Initialise the next-holiday sensor."""
+        super().__init__(coordinator, student_id, "next_holiday")
+
+    @property
+    def _holiday(self) -> Holiday | None:
+        data = self.student_data
+        if data is None:
+            return None
+        return current_or_next_holiday(data.extras.holidays, dt_util.now().date())
+
+    @property
+    def available(self) -> bool:
+        """Unavailable when the school does not share its holidays."""
+        data = self.student_data
+        return (
+            super().available
+            and data is not None
+            and "holidays" in data.extras.available
+        )
+
+    @property
+    def native_value(self) -> date | None:
+        """Return the first day of the next holiday."""
+        return holiday.start if (holiday := self._holiday) else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return the holiday, a countdown and the whole year's holidays."""
+        data = self.student_data
+        if data is None:
+            return {}
+        today = dt_util.now().date()
+        holiday = self._holiday
+        attributes: dict[str, Any] = {
+            "holidays": [h.as_dict() for h in data.extras.holidays],
+        }
+        if holiday is not None:
+            attributes.update(
+                {
+                    "name": holiday.name,
+                    "start": holiday.start.isoformat(),
+                    "end": holiday.end.isoformat(),
+                    "in_holiday": holiday.start <= today <= holiday.end,
+                    "days_until": max((holiday.start - today).days, 0),
+                }
+            )
+        if (year := data.extras.school_year) is not None:
+            total = (year.end - year.start).days or 1
+            attributes["school_year"] = year.as_dict()
+            attributes["school_year_progress"] = round(
+                min(max((today - year.start).days / total, 0), 1) * 100
+            )
+        return attributes
+
+
+class SomtodaySchoolClassSensor(SomtodayStudentEntity, SensorEntity):
+    """The student's class, with year, programme and full subject names."""
+
+    _unrecorded_attributes = frozenset({"subjects"})
+
+    def __init__(self, coordinator: SomtodayCoordinator, student_id: int) -> None:
+        """Initialise the class sensor."""
+        super().__init__(coordinator, student_id, "school_class")
+
+    @property
+    def available(self) -> bool:
+        """Unavailable when no placement could be read."""
+        data = self.student_data
+        return (
+            super().available
+            and data is not None
+            and data.extras.placement is not None
+        )
+
+    @property
+    def native_value(self) -> str | None:
+        """Return the class name."""
+        data = self.student_data
+        placement = data.extras.placement if data else None
+        return placement.class_name if placement else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return year, programme, location and the subject list."""
+        data = self.student_data
+        if data is None or data.extras.placement is None:
+            return {}
+        return {**data.extras.placement.as_dict(), "subjects": data.extras.subjects}
+
+
+class SomtodayAssignmentsSensor(SomtodayStudentEntity, SensorEntity):
+    """Work to hand in that has not been handed in yet."""
+
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _unrecorded_attributes = frozenset({"assignments"})
+
+    def __init__(self, coordinator: SomtodayCoordinator, student_id: int) -> None:
+        """Initialise the assignments sensor."""
+        super().__init__(coordinator, student_id, "assignments")
+
+    @property
+    def available(self) -> bool:
+        """Unavailable when the school does not share hand-in work."""
+        data = self.student_data
+        return (
+            super().available
+            and data is not None
+            and "assignments" in data.extras.available
+        )
+
+    @property
+    def native_value(self) -> int | None:
+        """Return how many assignments are open, upcoming or late."""
+        data = self.student_data
+        if data is None:
+            return None
+        now = dt_util.now()
+        return sum(
+            1 for item in data.extras.assignments if item.status(now) != "handed_in"
+        )
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return every assignment with its deadline and status."""
+        data = self.student_data
+        if data is None:
+            return {}
+        now = dt_util.now()
+        items = data.extras.assignments
+        return {
+            "late": sum(1 for item in items if item.status(now) == "late"),
+            "assignments": [
+                item.as_dict(now) for item in items[:MAX_ATTRIBUTE_ITEMS]
+            ],
+        }
+
+
+class SomtodayAnnouncementsSensor(SomtodayStudentEntity, SensorEntity):
+    """Somtoday's own nationwide notices: outages and maintenance."""
+
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _unrecorded_attributes = frozenset({"announcements"})
+
+    def __init__(self, coordinator: SomtodayCoordinator, student_id: int) -> None:
+        """Initialise the announcements sensor."""
+        super().__init__(coordinator, student_id, "announcements")
+
+    @property
+    def available(self) -> bool:
+        """Unavailable when the notices could not be read."""
+        return (
+            super().available
+            and "announcements" in self.coordinator.account_extras.available
+        )
+
+    @property
+    def _active(self) -> list[Announcement]:
+        now = dt_util.now()
+        return [
+            item
+            for item in self.coordinator.account_extras.announcements
+            if (item.start is None or item.start <= now)
+            and (item.end is None or item.end >= now)
+        ]
+
+    @property
+    def native_value(self) -> int:
+        """Return how many notices are currently published."""
+        return len(self._active)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return the notices themselves."""
+        return {
+            "announcements": [
+                item.as_dict() for item in self._active[:MAX_ATTRIBUTE_ITEMS]
+            ]
+        }

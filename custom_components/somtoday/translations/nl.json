@@ -54,11 +54,21 @@
         "title": "Somtoday-opties",
         "data": {
           "refresh_interval": "Vernieuwingsinterval",
-          "days_ahead": "Aantal dagen rooster ophalen"
+          "days_ahead": "Aantal dagen rooster ophalen",
+          "planner_allowed_users": "Wie mag de planner bewerken",
+          "grades_allowed_users": "Wie mag cijfers zien",
+          "absences_allowed_users": "Wie mag afwezigheid zien",
+          "measures_allowed_users": "Wie mag maatregelen zien",
+          "messages_allowed_users": "Wie mag berichten zien"
         },
         "data_description": {
           "refresh_interval": "Hoe vaak er bij Somtoday gecontroleerd wordt op wijzigingen.",
-          "days_ahead": "Hoe ver vooruit het rooster wordt ingeladen. De kalender kan nog steeds elke periode tonen — die haalt hij dan direct op."
+          "days_ahead": "Hoe ver vooruit het rooster wordt ingeladen. De kalender kan nog steeds elke periode tonen — die haalt hij dan direct op.",
+          "planner_allowed_users": "Beheerders mogen altijd bewerken.",
+          "grades_allowed_users": "Cijfers en gemiddelden komen nooit in een entiteit, want entiteiten kan iedere ingelogde gebruiker lezen. Alleen de gebruikers die je hier aanvinkt krijgen ze te zien in de Somtoday-kaart. Standaard staat niemand aangevinkt, ook beheerders niet.",
+          "absences_allowed_users": "Afwezigheid, te laat en vergelijkbare registraties. Verder hetzelfde als bij cijfers.",
+          "measures_allowed_users": "Maatregelen zoals nablijven of strafwerk. Verder hetzelfde als bij cijfers.",
+          "messages_allowed_users": "Berichten van school, inclusief de inhoud. Somtoday krijgt nooit te horen dat een bericht gelezen is. Verder hetzelfde als bij cijfers."
         }
       }
     }
@@ -141,6 +151,46 @@
       },
       "last_update": {
         "name": "Laatste update"
+      },
+      "next_holiday": {
+        "name": "Volgende vakantie"
+      },
+      "school_class": {
+        "name": "Klas"
+      },
+      "assignments": {
+        "name": "Inleveropdrachten"
+      },
+      "announcements": {
+        "name": "Somtoday-meldingen"
+      }
+    }
+  },
+  "services": {
+    "get_records": {
+      "name": "Vertrouwelijke gegevens ophalen",
+      "description": "Geeft cijfers, afwezigheid, maatregelen en berichten terug, beperkt tot wat de aanroepende gebruiker volgens de opties mag zien. Automatiseringen en scripts die Home Assistant zelf start krijgen alles.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Somtoday-account",
+          "description": "Leeg laten voor alle accounts."
+        },
+        "student_id": {
+          "name": "Leerling",
+          "description": "Somtoday-leerlingnummer. Leeg laten voor alle leerlingen."
+        },
+        "categories": {
+          "name": "Onderdelen",
+          "description": "Welke onderdelen terug moeten komen. Leeg laten voor alles."
+        },
+        "uids": {
+          "name": "Id's",
+          "description": "Alleen deze items, bijvoorbeeld de uids uit een somtoday_new_record-event."
+        },
+        "limit": {
+          "name": "Maximum per onderdeel",
+          "description": "Hooguit zoveel items per onderdeel."
+        }
       }
     }
   }

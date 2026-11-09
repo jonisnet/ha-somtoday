@@ -66,7 +66,7 @@ async def test_students_are_reported_positionally(hass, config_entry, mock_api):
     diagnostics = await async_get_config_entry_diagnostics(hass, config_entry)
     assert [student["index"] for student in diagnostics["students"]] == [0, 1]
     for student in diagnostics["students"]:
-        assert set(student) == {"index", "lessons", "homework"}
+        assert set(student) == {"index", "lessons", "homework", "records_available"}
 
 
 async def test_structural_counts_are_useful(hass, config_entry, mock_api):

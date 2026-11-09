@@ -4,7 +4,31 @@ All notable changes to the Somtoday integration are documented here.
 Development happens in beta releases (`X.Y.Z-beta.N`) between occasional real
 releases, where this file is consolidated into one summary per real version.
 
-## 0.1.10
+## 0.2.0-beta.1
+
+### Added
+- **Everything Somtoday shares with your account.** New sensors per student:
+  *Next holiday* (with countdown, the year's holidays and school-year
+  progress), *Class* (class, year, programme, location and full subject names),
+  *Assignments to hand in* (deadline and status) and *Somtoday notices*
+  (outages and maintenance). Homework items gain `time_indication` and `links`.
+- **Grades, subject averages, absences, measures and messages**, served by the
+  new `somtoday.get_records` service instead of entities, because every
+  signed-in user can read every entity. The integration options get one list of
+  users per category; nobody is on it until you add them. Automations and the
+  blueprint always get everything. Messages are never marked as read.
+- **`somtoday_new_record` events** for new grades (including a changed result),
+  absences, measures, messages, assignments and Somtoday notices. Confidential
+  kinds carry ids only. What was seen survives a restart, and the first poll
+  learns silently.
+- **A notification blueprint**, `somtoday_meldingen.yaml`, with a tick per kind
+  and a choice to include the content (the grade, the start of a message) or
+  only say that something new came in.
+
+### Changed
+- The planner's user list in the options is now a list of Home Assistant users
+  to tick instead of a text field with user ids.
+
 
 ### Fixed
 - **Lesson material is recognised.** Somtoday marks some study-guide items as

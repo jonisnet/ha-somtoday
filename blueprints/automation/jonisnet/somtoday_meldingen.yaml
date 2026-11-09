@@ -1,0 +1,232 @@
+blueprint:
+  name: Somtoday - melding bij nieuwe cijfers, berichten en meer
+  description: >-
+    Stuurt een bericht naar de telefoons die je kiest zodra er in Somtoday iets
+    nieuws binnenkomt: een cijfer, een afwezigheid of te-laat-melding, een
+    maatregel, een bericht van school, een nieuwe inleveropdracht of een
+    storingsmelding van Somtoday zelf. Per soort zet je het aan of uit.
+
+
+    **Wat je nodig hebt:** de Somtoday-integratie (versie 0.2.0 of nieuwer) en
+    de Home Assistant-app op de telefoons die bericht moeten krijgen.
+
+
+    **Privacy:** cijfers, afwezigheid, maatregelen en berichten staan niet in
+    Home Assistant-entiteiten, zodat niet iedereen in huis ze kan lezen. Deze
+    automatisering haalt ze pas op op het moment van de melding, en stuurt ze
+    alleen naar de telefoons die jij hier kiest. Kies dus geen gedeelde tablet
+    als je de inhoud meestuurt.
+
+
+    Goed om te weten: bij de allereerste keer ophalen leert de integratie wat
+    er al stond, zonder meldingen. Daarna krijg je alleen wat echt nieuw is,
+    ook na een herstart.
+  domain: automation
+  source_url: https://github.com/jonisnet/ha-somtoday/blob/main/blueprints/automation/jonisnet/somtoday_meldingen.yaml
+  input:
+    ontvangers:
+      name: 1. Wie krijgt de melding?
+      description: >-
+        Kies de telefoons die bericht moeten krijgen. Alleen apparaten met de
+        Home Assistant-app erop staan in de lijst.
+      selector:
+        device:
+          filter:
+            integration: mobile_app
+          multiple: true
+    dashboard:
+      name: 2. Welke pagina gaat open als je op de melding tikt?
+      description: >-
+        Het adres vanaf de schuine streep, bijvoorbeeld /lovelace/school. Geen
+        idee? Laat /lovelace/0 staan, dat is je standaard-dashboard.
+      default: /lovelace/0
+      selector:
+        select:
+          custom_value: true
+          mode: dropdown
+          options:
+            - /lovelace/0
+            - /lovelace/school
+    soorten:
+      name: 3. Waarover wil je bericht?
+      description: Vink aan waarover je een melding wilt krijgen.
+      default:
+        - grade
+        - registration
+        - measure
+        - message
+        - assignment
+        - announcement
+      selector:
+        select:
+          multiple: true
+          mode: list
+          options:
+            - label: Nieuw cijfer
+              value: grade
+            - label: Afwezigheid, te laat en dergelijke
+              value: registration
+            - label: Maatregel (nablijven, strafwerk)
+              value: measure
+            - label: Nieuw bericht van school
+              value: message
+            - label: Nieuwe inleveropdracht
+              value: assignment
+            - label: Storing of onderhoud bij Somtoday
+              value: announcement
+    inhoud:
+      name: 4. De inhoud meesturen?
+      description: >-
+        Aan: je ziet in de melding zelf het cijfer, de reden van afwezigheid of
+        het begin van het bericht. Uit: alleen dát er iets nieuws is, en je
+        kijkt zelf in de kaart.
+      default: true
+      selector:
+        boolean:
+    leerling:
+      name: 5. Over welk kind? (mag je overslaan)
+      description: >-
+        Leeg laten voor alle kinderen. Berichten van school en Somtoday-storingen
+        gelden voor het hele account en komen altijd door.
+      default: []
+      selector:
+        device:
+          filter:
+            integration: somtoday
+          multiple: false
+
+triggers:
+  - trigger: event
+    event_type: somtoday_new_record
+
+variables:
+  apparaten: !input ontvangers
+  pad: !input dashboard
+  soorten: !input soorten
+  inhoud: !input inhoud
+  leerling_apparaat: !input leerling
+  soort: "{{ trigger.event.data.kind }}"
+  categorie: >-
+    {{ {'grade': 'grades', 'registration': 'absences',
+        'measure': 'measures', 'message': 'messages'}.get(soort, '') }}
+  services: >-
+    {% set ns = namespace(items=[]) %}
+    {% for d in apparaten %}
+      {% set ns.items = ns.items + ['notify.mobile_app_' ~ (device_attr(d, 'name') | slugify)] %}
+    {% endfor %}
+    {{ ns.items }}
+  # "Somtoday (Fien Voorbeeld)" -> "Fien"
+  kind_naam: >-
+    {% set naam = device_attr(trigger.event.data.device_id, 'name') if trigger.event.data.device_id else '' %}
+    {% set naam = (naam or '') | regex_replace('^Somtoday \\((.*)\\)$', '\\1') %}
+    {{ naam.split(' ')[0] if naam else '' }}
+
+conditions:
+  - condition: template
+    value_template: "{{ soort in soorten }}"
+  - condition: template
+    value_template: >-
+      {{ not leerling_apparaat
+         or not trigger.event.data.device_id
+         or trigger.event.data.device_id == leerling_apparaat }}
+
+actions:
+  # De inhoud wordt nu pas opgehaald, bij de integratie zelf: zo staat een
+  # cijfer of bericht nooit in een entiteit die iedereen in huis kan lezen.
+  # Altijd aangeroepen (bij niet-vertrouwelijke soorten komt er gewoon niets
+  # terug), zodat het antwoord in de rest van de automatisering beschikbaar is.
+  - action: somtoday.get_records
+    data:
+      categories: ["{{ categorie or 'messages' }}"]
+      uids: "{{ trigger.event.data.uids if (inhoud and categorie) else ['-'] }}"
+      limit: 20
+    response_variable: gegevens
+  - variables:
+      dagen: ['ma', 'di', 'wo', 'do', 'vr', 'za', 'zo']
+      maanden: ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec']
+      items: >-
+        {%- set ns = namespace(items=[]) -%}
+        {%- if soort in ['assignment', 'announcement'] -%}
+          {%- set ns.items = trigger.event.data.get('items', []) -%}
+        {%- elif inhoud and gegevens and gegevens.get('entries') -%}
+          {%- for entry in gegevens.entries -%}
+            {%- if soort == 'message' -%}
+              {%- set ns.items = ns.items + (entry.get('messages') or []) -%}
+            {%- else -%}
+              {%- for s in entry.students -%}
+                {%- if s.student_id == trigger.event.data.student_id -%}
+                  {%- set lijst = {'grade': s.get('grades'), 'registration': s.get('absences'), 'measure': s.get('measures')}[soort] -%}
+                  {%- set ns.items = ns.items + (lijst or []) -%}
+                {%- endif -%}
+              {%- endfor -%}
+            {%- endif -%}
+          {%- endfor -%}
+        {%- endif -%}
+        {{ ns.items }}
+      aantal: "{{ trigger.event.data.count | int(1) }}"
+      titel: >-
+        {%- set namen = {
+          'grade': ('Nieuw cijfer', 'nieuwe cijfers'),
+          'registration': ('Afwezigheid geregistreerd', 'nieuwe registraties'),
+          'measure': ('Nieuwe maatregel', 'nieuwe maatregelen'),
+          'message': ('Nieuw bericht van school', 'nieuwe berichten'),
+          'assignment': ('Nieuwe inleveropdracht', 'nieuwe inleveropdrachten'),
+          'announcement': ('Melding van Somtoday', 'meldingen van Somtoday') } -%}
+        {%- set n = namen.get(soort, ('Somtoday', 'Somtoday')) -%}
+        {%- set basis = n[0] if (aantal | int) == 1 else (aantal ~ ' ' ~ n[1]) -%}
+        {{ basis ~ (' - ' ~ kind_naam if kind_naam else '') }}
+      bericht: >-
+        {%- set soortnamen = {
+          'unauthorised_absence': 'Ongeoorloofd afwezig', 'authorised_absence': 'Geoorloofd afwezig',
+          'absence_observed': 'Afwezig', 'late': 'Te laat', 'removed_from_class': 'Uit de les gestuurd',
+          'homework_not_done': 'Huiswerk niet gemaakt', 'materials_missing': 'Materiaal niet in orde' } -%}
+        {%- set ns = namespace(lines=[]) -%}
+        {%- for i in items[:5] -%}
+          {%- set moment = (i.get('entered') or i.get('start') or i.get('date') or i.get('sent') or i.get('deadline')) -%}
+          {%- set t = (moment | as_datetime | as_local) if moment else none -%}
+          {%- set wanneer = (dagen[t.weekday()] ~ ' ' ~ t.day ~ ' ' ~ maanden[t.month - 1]) if t else '' -%}
+          {%- if soort == 'grade' -%}
+            {%- set regel = (i.subject or 'Vak') ~ ': ' ~ (i.result or '?')
+                ~ (' (weging ' ~ (i.weight | round(1) | string | replace('.0', '')) ~ ')' if i.weight else '')
+                ~ (' - ' ~ i.description if i.description else '') -%}
+          {%- elif soort == 'registration' -%}
+            {%- set regel = soortnamen.get(i.kind, i.kind) ~ ' ' ~ wanneer
+                ~ (', ' ~ i.period ~ 'e uur' if i.period else '')
+                ~ (' (' ~ i.subject ~ ')' if i.subject else '')
+                ~ (' - ' ~ i.description if i.description else '') -%}
+          {%- elif soort == 'measure' -%}
+            {%- set regel = (i.description or 'Maatregel') ~ (' op ' ~ wanneer ~ ' ' ~ t.strftime('%H:%M') if t else '')
+                ~ (' - ' ~ i.remarks if i.remarks else '') -%}
+          {%- elif soort == 'message' -%}
+            {%- set tekst = (i.body or '') -%}
+            {%- set regel = (i.sender or 'School') ~ ': ' ~ (i.subject or '(geen onderwerp)')
+                ~ ('\n' ~ (tekst[:200] ~ ('...' if tekst | length > 200 else '')) if tekst else '') -%}
+          {%- elif soort == 'assignment' -%}
+            {%- set regel = (i.subject or 'Vak') ~ ': ' ~ (i.topic or 'opdracht')
+                ~ (' - inleveren uiterlijk ' ~ wanneer ~ ' ' ~ t.strftime('%H:%M') if t else '') -%}
+          {%- else -%}
+            {%- set regel = (i.subject or 'Melding') ~ (': ' ~ i.body if i.body else '') -%}
+          {%- endif -%}
+          {%- set ns.lines = ns.lines + [regel] -%}
+        {%- endfor -%}
+        {%- if not ns.lines -%}
+          {%- set ns.lines = ['Open de Somtoday-kaart om te kijken.'] -%}
+        {%- elif items | count > 5 -%}
+          {%- set ns.lines = ns.lines + ['en nog ' ~ (items | count - 5) ~ ' meer'] -%}
+        {%- endif -%}
+        {{ ns.lines | join('\n') }}
+  - repeat:
+      for_each: "{{ services }}"
+      sequence:
+        - action: "{{ repeat.item }}"
+          data:
+            title: "{{ titel }}"
+            message: "{{ bericht }}"
+            data:
+              clickAction: "{{ pad }}"
+              url: "{{ pad }}"
+              group: somtoday
+
+# Meerdere soorten komen in dezelfde poll binnen, dus netjes achter elkaar.
+mode: queued
+max: 20

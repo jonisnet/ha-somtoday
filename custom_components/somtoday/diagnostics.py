@@ -60,6 +60,9 @@ async def async_get_config_entry_diagnostics(
                 if coordinator.update_interval
                 else None
             ),
+            "account_records_available": sorted(
+                coordinator.account_extras.available
+            ),
         },
         # Students are reported positionally. The count matters for debugging a
         # parent account; which children they are does not.
@@ -106,4 +109,7 @@ def _student_diagnostics(index: int, data: StudentData) -> dict[str, Any]:
             "with_due_date": sum(1 for item in homework if item.due is not None),
             "with_subject": sum(1 for item in homework if item.subject),
         },
+        # Which record categories Somtoday handed over. Availability only:
+        # not even counts of grades, absences or messages are published.
+        "records_available": sorted(data.extras.available),
     }

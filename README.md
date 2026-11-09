@@ -32,6 +32,17 @@ in Home Assistant's local `.storage`; nothing is written back to Somtoday.
   integration options. Everyone else has read-only access.
 - A **last update** diagnostic sensor, so a silently stalled integration is
   visible instead of just looking like a quiet week.
+- **The next holiday** with a countdown, every holiday of the year and how far
+  the school year is.
+- **The class** — class name, year, programme, location and the full name of
+  every subject abbreviation.
+- **Assignments to hand in**, with their deadline and whether they are late.
+- **Somtoday's own notices** about outages and maintenance.
+- **Grades, subject averages, absences, measures and messages** — kept out of
+  entities on purpose and shown only to the Home Assistant users you choose.
+  See [Grades, absences and messages](#grades-absences-and-messages).
+- **A notification blueprint** for new grades, absences, measures, messages,
+  assignments and Somtoday notices.
 
 One Home Assistant device per student, so a parent account with two children
 gets two clean sets of entities.
@@ -193,6 +204,10 @@ your Somtoday password.
   always keeps eight weeks available for compatible dashboard cards. This is
   what the sensors and the cached calendar cover; the calendar can still show
   any period, it just fetches those on demand.
+- **Who may edit the planner** — administrators always can.
+- **Who may see grades / absences / measures / messages** — one list of Home
+  Assistant users per category. Nobody is on a list until you put them there,
+  administrators included. See below.
 
 ## Entities
 
@@ -213,6 +228,63 @@ are shown here, an English instance reads `next_lesson`, `next_school_day`,
 | `sensor.somtoday_<naam>_basisrooster` | Recurring lessons in a normal week *(disabled by default)* | `weeks_observed`, `days` |
 | `sensor.somtoday_<naam>_roosterwijzigingen` | When the latest timetable change came in (timestamp) | `change_count`, `retention_days`, `changes` (newest first, each with `detected_at`, `type`, `subject`, `start`, `end`, and `previous` where something moved) |
 | `sensor.somtoday_<naam>_laatste_update` | Last successful poll (timestamp) | — |
+| `sensor.somtoday_<naam>_volgende_vakantie` | First day of the current or next holiday (date) | `name`, `start`, `end`, `in_holiday`, `days_until`, `holidays`, `school_year`, `school_year_progress` |
+| `sensor.somtoday_<naam>_klas` | Class name | `year`, `programme`, `location`, `subjects` (abbreviation → full name) |
+| `sensor.somtoday_<naam>_inleveropdrachten` | Assignments not yet handed in | `late`, `assignments` (each with `subject`, `topic`, `opens`, `deadline`, `status`: `open` / `upcoming` / `late` / `handed_in`) |
+| `sensor.somtoday_<naam>_somtoday_meldingen` | Active Somtoday notices | `announcements` (`subject`, `body`, `level`, `start`, `end`) |
+
+Homework items also carry `time_indication` (Somtoday's own estimate, such as
+"45 minuten") and `links` (the teacher's external links). A category the school
+does not share with your account makes its sensor unavailable rather than
+pretending it is empty.
+
+## Grades, absences and messages
+
+Grades, subject averages, absences (including late arrivals, removal from class,
+homework not done and materials missing), measures such as detention, and
+messages from school — with their contents — are all available. They are
+**never stored in an entity**, because Home Assistant lets every signed-in user
+read every entity through the history, the logbook and the search. Hiding a
+dashboard card per user would only be cosmetic.
+
+Instead they stay inside the integration and come out through one service,
+`somtoday.get_records`, which checks who is asking:
+
+- **A signed-in user** gets only the categories they are ticked for in the
+  integration options. Nobody is ticked by default, administrators included.
+- **An automation or script started by Home Assistant itself** gets everything:
+  whoever set it up chose where the result goes.
+
+The Somtoday Card uses this service, so each person sees exactly what you
+allowed them to. You can call it yourself too:
+
+```yaml
+action: somtoday.get_records
+data:
+  categories: [grades]   # grades, absences, measures, messages; empty = all
+response_variable: records
+```
+
+Reading messages never marks them as read in Somtoday: the integration only
+reads, and has no way to send Somtoday's "mark as read".
+
+## Notifications for new grades, messages and more
+
+[![Import the blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fjonisnet%2Fha-somtoday%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fjonisnet%2Fsomtoday_meldingen.yaml)
+
+Pick the phones, tick what you want to hear about — new grade, absence or late
+arrival, measure, message from school, new assignment, Somtoday outage — and
+choose whether the notification shows the content (the grade itself, the start
+of the message) or only that something new came in.
+
+Under the hood every poll compares against what it saw before and fires a
+`somtoday_new_record` event per kind. For grades, absences, measures and
+messages the event carries **ids only** — events are stored in the recorder
+database — and the blueprint fetches the content through `somtoday.get_records`
+at the moment it sends the notification. The very first poll learns what is
+already there without announcing it; what was seen is kept in `.storage`, so a
+restart does not make old grades look new. A changed result (a resit) counts as
+new.
 
 Notes on behaviour that is easy to misread:
 
@@ -394,9 +466,12 @@ would need.
 
 ## Known limitations
 
-- **Grades, absences and messages are not exposed.** They are technically
-  reachable, but they are the most sensitive data in the account and were left
-  out of this version on purpose.
+- **Grades, absences and messages are not entities.** They come through the
+  `somtoday.get_records` service instead, so access can be limited per user —
+  see above.
+- **A parent account does not see whether an assignment was handed in.**
+  Somtoday only gives that to the student's own account, so on a parent account
+  an assignment counts as late once its deadline has passed.
 - **Homework completeness depends on the school.** Somtoday spreads study-guide
   items over three endpoints (per lesson, per day, per week); all three are
   fetched, but a school that keeps its homework somewhere else entirely will
@@ -431,7 +506,8 @@ parent accounts. That gap is why this integration talks to the REST API instead.
   written to the log at any level.
 - **Diagnostics are structural, not redacted payloads.** The diagnostics file
   contains counts, statuses, timings and field-coverage numbers — no name, class,
-  teacher, room, homework topic or token. That is deliberate: diagnostics get
+  teacher, room, homework topic, grade, absence, message or token. For grades,
+  absences, measures and messages it only says whether Somtoday shared them. That is deliberate: diagnostics get
   attached to public issues, and this account belongs to a child.
 - **Revoking access**: change the Somtoday password. The stored refresh token
   stops working and Home Assistant will ask you to sign in again.

@@ -367,7 +367,31 @@ async def test_options_flow(hass, setup_integration):
         CONF_REFRESH_INTERVAL: 60,
         CONF_DAYS_AHEAD: 21,
         CONF_PLANNER_ALLOWED_USERS: [],
+        "grades_allowed_users": [],
+        "absences_allowed_users": [],
+        "measures_allowed_users": [],
+        "messages_allowed_users": [],
     }
+
+
+async def test_options_offer_real_users_per_category(hass, setup_integration, hass_admin_user):
+    """Each confidential category gets its own list of real users."""
+    result = await hass.config_entries.options.async_init(setup_integration.entry_id)
+    schema = result["data_schema"].schema
+    keys = {str(key) for key in schema}
+    for category in ("grades", "absences", "measures", "messages"):
+        assert f"{category}_allowed_users" in keys
+
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {
+            CONF_REFRESH_INTERVAL: "30",
+            CONF_DAYS_AHEAD: "56",
+            "grades_allowed_users": [hass_admin_user.id],
+        },
+    )
+    await hass.async_block_till_done()
+    assert setup_integration.options["grades_allowed_users"] == [hass_admin_user.id]
 
 async def test_options_default_to_the_eight_week_window(hass, setup_integration):
     """Eight weeks support the dashboard's future-week browser."""
