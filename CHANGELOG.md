@@ -4,6 +4,14 @@ All notable changes to the Somtoday integration are documented here.
 Development happens in beta releases (`X.Y.Z-beta.N`) between occasional real
 releases, where this file is consolidated into one summary per real version.
 
+
+## Unreleased
+
+### Changed
+- **The notification blueprint has a section per kind**: who gets it, who sees
+  the content, which child, and which tab of the Somtoday Card opens when the
+  notification is tapped (`?somtoday_view=`, Somtoday Card 0.4.0-beta.2+).
+
 ## 0.2.0-beta.1
 
 ### Added

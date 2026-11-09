@@ -65,6 +65,38 @@ blueprint:
             "Nieuw cijfer, open de Somtoday-kaart".
           default: []
           selector: *telefoons
+        cijfer_tab:
+          name: Welke tab van de Somtoday-kaart gaat open?
+          description: >-
+            Werkt met Somtoday Card 0.4.0-beta.2 of nieuwer, op de pagina die
+            je bij Algemeen kiest.
+          default: grades
+          selector: &tabs
+            select:
+              mode: dropdown
+              options:
+                - label: Geen, alleen de pagina openen
+                  value: none
+                - label: Vandaag
+                  value: day
+                - label: Morgen
+                  value: tomorrow
+                - label: Week
+                  value: week
+                - label: Huiswerk
+                  value: homework
+                - label: Inleveropdrachten
+                  value: assignments
+                - label: Toetsen
+                  value: tests
+                - label: Wijzigingen
+                  value: changes
+                - label: Cijfers
+                  value: grades
+                - label: Afwezigheid
+                  value: absences
+                - label: Berichten
+                  value: messages
         cijfer_leerlingen:
           name: Over welk kind?
           description: Leeg laten = alle kinderen.
@@ -91,6 +123,13 @@ blueprint:
           name: Wie ziet de reden, het uur en het vak in de melding?
           default: []
           selector: *telefoons
+        afwezig_tab:
+          name: Welke tab van de Somtoday-kaart gaat open?
+          description: >-
+            Werkt met Somtoday Card 0.4.0-beta.2 of nieuwer, op de pagina die
+            je bij Algemeen kiest.
+          default: absences
+          selector: *tabs
         afwezig_leerlingen:
           name: Over welk kind?
           description: Leeg laten = alle kinderen.
@@ -111,6 +150,13 @@ blueprint:
           name: Wie ziet de maatregel zelf in de melding?
           default: []
           selector: *telefoons
+        maatregel_tab:
+          name: Welke tab van de Somtoday-kaart gaat open?
+          description: >-
+            Werkt met Somtoday Card 0.4.0-beta.2 of nieuwer, op de pagina die
+            je bij Algemeen kiest.
+          default: absences
+          selector: *tabs
         maatregel_leerlingen:
           name: Over welk kind?
           description: Leeg laten = alle kinderen.
@@ -133,6 +179,13 @@ blueprint:
           name: Wie ziet afzender, onderwerp en het begin van het bericht?
           default: []
           selector: *telefoons
+        bericht_tab:
+          name: Welke tab van de Somtoday-kaart gaat open?
+          description: >-
+            Werkt met Somtoday Card 0.4.0-beta.2 of nieuwer, op de pagina die
+            je bij Algemeen kiest.
+          default: messages
+          selector: *tabs
 
     opdrachten:
       name: Nieuwe inleveropdracht
@@ -146,6 +199,13 @@ blueprint:
             vertrouwelijk. Leeg laten = geen meldingen over opdrachten.
           default: []
           selector: *telefoons
+        opdracht_tab:
+          name: Welke tab van de Somtoday-kaart gaat open?
+          description: >-
+            Werkt met Somtoday Card 0.4.0-beta.2 of nieuwer, op de pagina die
+            je bij Algemeen kiest.
+          default: assignments
+          selector: *tabs
         opdracht_leerlingen:
           name: Over welk kind?
           description: Leeg laten = alle kinderen.
@@ -162,6 +222,13 @@ blueprint:
           description: Leeg laten = geen meldingen over storingen.
           default: []
           selector: *telefoons
+        storing_tab:
+          name: Welke tab van de Somtoday-kaart gaat open?
+          description: >-
+            Werkt met Somtoday Card 0.4.0-beta.2 of nieuwer, op de pagina die
+            je bij Algemeen kiest.
+          default: none
+          selector: *tabs
 
 triggers:
   - trigger: event
@@ -174,27 +241,33 @@ variables:
       ontvangers: !input cijfer_ontvangers
       inhoud: !input cijfer_inhoud
       leerlingen: !input cijfer_leerlingen
+      tab: !input cijfer_tab
     registration:
       ontvangers: !input afwezig_ontvangers
       inhoud: !input afwezig_inhoud
       leerlingen: !input afwezig_leerlingen
+      tab: !input afwezig_tab
     measure:
       ontvangers: !input maatregel_ontvangers
       inhoud: !input maatregel_inhoud
       leerlingen: !input maatregel_leerlingen
+      tab: !input maatregel_tab
     message:
       ontvangers: !input bericht_ontvangers
       inhoud: !input bericht_inhoud
       leerlingen: []
+      tab: !input bericht_tab
     # Niet vertrouwelijk: iedere ontvanger krijgt de inhoud.
     assignment:
       ontvangers: !input opdracht_ontvangers
       inhoud: !input opdracht_ontvangers
       leerlingen: !input opdracht_leerlingen
+      tab: !input opdracht_tab
     announcement:
       ontvangers: !input storing_ontvangers
       inhoud: !input storing_ontvangers
       leerlingen: []
+      tab: !input storing_tab
   soort: "{{ trigger.event.data.kind }}"
   instelling: "{{ instellingen.get(soort, {}) }}"
   categorie: >-
@@ -214,6 +287,17 @@ variables:
       {% set ns.items = ns.items + [{'dienst': 'notify.mobile_app_' ~ (device_attr(d, 'name') | slugify), 'vol': d in i}] %}
     {% endfor %}
     {{ ns.items }}
+  # De pagina uit Algemeen, met de gekozen tab (en het kind) erachter.
+  link: >-
+    {% set tab = instelling.get('tab') or 'none' %}
+    {% set ns = namespace(params=[]) %}
+    {% if tab != 'none' %}
+      {% set ns.params = ns.params + ['somtoday_view=' ~ tab] %}
+      {% if trigger.event.data.student_id %}
+        {% set ns.params = ns.params + ['somtoday_student=' ~ trigger.event.data.student_id] %}
+      {% endif %}
+    {% endif %}
+    {{ pad ~ (('&' if '?' in pad else '?') ~ ns.params | join('&') if ns.params else '') }}
   iemand_vol: "{{ ontvangers | selectattr('vol') | list | count > 0 }}"
   # "Somtoday (Fien Voorbeeld)" -> "Fien"
   kind_naam: >-
@@ -324,8 +408,8 @@ actions:
             title: "{{ titel }}"
             message: "{{ bericht if repeat.item.vol else kort }}"
             data:
-              clickAction: "{{ pad }}"
-              url: "{{ pad }}"
+              clickAction: "{{ link }}"
+              url: "{{ link }}"
               group: somtoday
 
 # Meerdere soorten komen in dezelfde poll binnen, dus netjes achter elkaar.

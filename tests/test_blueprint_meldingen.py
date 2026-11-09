@@ -71,6 +71,7 @@ async def test_new_grade_with_content(hass, config_entry, mock_api, phone):
     assert data["title"].startswith("Nieuw cijfer")
     assert "wi: 5,0" in data["message"]
     assert "weging 2" in data["message"]
+    assert data["data"]["clickAction"].startswith("/lovelace/0?somtoday_view=grades&somtoday_student=")
 
 
 async def test_without_content_only_says_something_is_new(hass, config_entry, mock_api, phone):
@@ -107,6 +108,32 @@ async def test_message_and_assignment(hass, config_entry, mock_api, phone):
     assert "Mentor: Ouderavond" in by_title["Nieuw bericht van school"]
     assert "Welkom" in by_title["Nieuw bericht van school"]
     assert "aardrijkskunde: Werkstuk" in by_title["Nieuwe inleveropdracht"]
+    links = {c.data["title"].split(" - ")[0]: c.data["data"]["url"] for c in calls}
+    assert links["Nieuw bericht van school"] == "/lovelace/0?somtoday_view=messages"
+    assert "somtoday_view=assignments" in links["Nieuwe inleveropdracht"]
+
+
+async def test_no_tab_keeps_the_plain_page(hass, config_entry, mock_api, phone):
+    device, calls = phone
+    await _setup(hass, config_entry, mock_api)
+    await _automation(
+        hass,
+        dashboard="/lovelace/school?kiosk",
+        bericht_ontvangers=[device.id],
+        bericht_tab="none",
+        opdracht_ontvangers=[device.id],
+        opdracht_tab="grades",
+    )
+    mock_api.async_get_conversations.return_value = [
+        {"boodschappen": [_message(1)]},
+        {"boodschappen": [_message(5)]},
+    ]
+    mock_api.async_get_assignments.return_value = [assignment(42)]
+    await config_entry.runtime_data.coordinator.async_refresh()
+    await hass.async_block_till_done()
+    links = {c.data["title"].split(" - ")[0]: c.data["data"]["url"] for c in calls}
+    assert links["Nieuw bericht van school"] == "/lovelace/school?kiosk"
+    assert links["Nieuwe inleveropdracht"].startswith("/lovelace/school?kiosk&somtoday_view=grades")
 
 
 async def test_unticked_kind_stays_silent(hass, config_entry, mock_api, phone):

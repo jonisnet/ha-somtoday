@@ -279,7 +279,10 @@ its own section where you pick:
 - **who gets it** (leave empty to skip that kind),
 - **who sees the content** — the grade itself, the start of the message; the
   other recipients only hear that something new came in,
-- **which child** it is about (empty = all).
+- **which child** it is about (empty = all),
+- **which tab of the Somtoday Card** opens when the notification is tapped —
+  grades for a new grade, messages for a message (needs Somtoday Card
+  0.4.0-beta.2 or newer).
 
 Under the hood every poll compares against what it saw before and fires a
 `somtoday_new_record` event per kind. For grades, absences, measures and
