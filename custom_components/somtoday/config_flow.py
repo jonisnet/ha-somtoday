@@ -17,11 +17,10 @@ from homeassistant.config_entries import (
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import (
+    SelectOptionDict,
     SelectSelector,
     SelectSelectorConfig,
     SelectSelectorMode,
-    TextSelector,
-    TextSelectorConfig,
 )
 
 from .api import SomtodayApiClient, SomtodayApiError
@@ -38,6 +37,7 @@ from .auth import (
     generate_state,
 )
 from .const import (
+    CONF_ALLOWED_USERS,
     CONF_API_URL,
     CONF_DAYS_AHEAD,
     CONF_PLANNER_ALLOWED_USERS,
@@ -45,6 +45,7 @@ from .const import (
     CONF_REFRESH_INTERVAL,
     CONF_REFRESH_TOKEN,
     CONF_TENANT,
+    CONFIDENTIAL_CATEGORIES,
     DAYS_AHEAD_OPTIONS,
     DEFAULT_DAYS_AHEAD,
     DEFAULT_REFRESH_INTERVAL,
@@ -295,6 +296,8 @@ class SomtodayOptionsFlow(OptionsFlow):
             return self.async_create_entry(data=_normalise_options(user_input))
 
         options = self.config_entry.options
+        users = await self._async_user_options()
+        known = {option["value"] for option in users}
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema(
@@ -316,13 +319,60 @@ class SomtodayOptionsFlow(OptionsFlow):
                     ): _int_selector(CONF_DAYS_AHEAD, DAYS_AHEAD_OPTIONS),
                     vol.Optional(
                         CONF_PLANNER_ALLOWED_USERS,
-                        default=", ".join(
-                            options.get(CONF_PLANNER_ALLOWED_USERS, [])
-                        ),
-                    ): TextSelector(TextSelectorConfig()),
+                        default=_stored_users(options, CONF_PLANNER_ALLOWED_USERS, known),
+                    ): _user_selector(users),
+                    **{
+                        vol.Optional(
+                            CONF_ALLOWED_USERS[category],
+                            default=_stored_users(
+                                options, CONF_ALLOWED_USERS[category], known
+                            ),
+                        ): _user_selector(users)
+                        for category in CONFIDENTIAL_CATEGORIES
+                    },
                 }
             ),
         )
+
+    async def _async_user_options(self) -> list[SelectOptionDict]:
+        """Return every real, active Home Assistant user as a choice.
+
+        System users (the Supervisor, add-ons) and deactivated accounts are
+        left out: nobody signs in with those.
+        """
+        users = await self.hass.auth.async_get_users()
+        return sorted(
+            (
+                SelectOptionDict(value=user.id, label=user.name or user.id)
+                for user in users
+                if not user.system_generated and user.is_active
+            ),
+            key=lambda option: option["label"].lower(),
+        )
+
+
+def _user_selector(users: list[SelectOptionDict]) -> SelectSelector:
+    """Return a multi-select of Home Assistant users."""
+    return SelectSelector(
+        SelectSelectorConfig(
+            options=users, multiple=True, mode=SelectSelectorMode.LIST
+        )
+    )
+
+
+def _stored_users(
+    options: Mapping[str, Any], key: str, known: set[str]
+) -> list[str]:
+    """Return the stored user ids that still exist.
+
+    Older versions stored the planner list from a comma-separated text field,
+    which reads back as a list too. A deleted user would make the form refuse
+    to save, so unknown ids are dropped here.
+    """
+    stored = options.get(key) or []
+    if isinstance(stored, str):
+        stored = [item.strip() for item in stored.split(",")]
+    return [user_id for user_id in stored if user_id in known]
 
 
 def _stored_choice(
@@ -356,14 +406,15 @@ def _int_selector(key: str, options: tuple[int, ...]) -> SelectSelector:
 
 def _normalise_options(user_input: dict[str, Any]) -> dict[str, Any]:
     """Turn the dropdown's string values back into integers."""
-    return {
-        key: (
-            int(value)
-            if key in (CONF_REFRESH_INTERVAL, CONF_DAYS_AHEAD)
-            else [item.strip() for item in value.split(",") if item.strip()]
-        )
-        for key, value in user_input.items()
-    }
+    normalised: dict[str, Any] = {}
+    for key, value in user_input.items():
+        if key in (CONF_REFRESH_INTERVAL, CONF_DAYS_AHEAD):
+            normalised[key] = int(value)
+        elif isinstance(value, str):
+            normalised[key] = [item.strip() for item in value.split(",") if item.strip()]
+        else:
+            normalised[key] = list(value)
+    return normalised
 
 
 def _entry_data(tokens: SomtodayTokens) -> dict[str, Any]:

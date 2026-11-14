@@ -17,7 +17,7 @@ from typing import Any
 
 import aiohttp
 
-from .auth import SomtodayAuth, SomtodayInvalidAuth
+from .auth import SomtodayAuth, SomtodayInvalidAuth, SomtodaySessionRejected
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -173,6 +173,108 @@ class SomtodayApiClient:
         return items
 
     # ------------------------------------------------------------------
+    # School records beyond the timetable. All read-only GETs; the caller
+    # treats every one of them as optional, because a school can switch any
+    # of these off per account and Somtoday then answers 403 (or 500).
+    # ------------------------------------------------------------------
+
+    async def async_get_holidays(self, student_id: int) -> list[dict[str, Any]]:
+        """Return the school holidays for a student."""
+        return await self._async_get_items(f"/rest/v1/vakanties/leerling/{student_id}")
+
+    async def async_get_school_year(self) -> dict[str, Any]:
+        """Return the current school year."""
+        data, _headers = await self._async_get("/rest/v1/schooljaren/huidig")
+        return data
+
+    async def async_get_placements(self, student_id: int) -> list[dict[str, Any]]:
+        """Return a student's placements: class, year, programme, location."""
+        return await self._async_get_items(
+            "/rest/v1/plaatsingen",
+            params=[("leerling", str(student_id)), ("additional", "vestiging")],
+        )
+
+    async def async_get_subjects(self, student_id: int, on: date) -> list[dict[str, Any]]:
+        """Return the subjects a student takes, for abbreviation → name."""
+        return await self._async_get_items(
+            "/rest/v1/vakkeuzes",
+            params=[("actiefOpPeildatum", on.isoformat()), ("leerling", str(student_id))],
+        )
+
+    async def async_get_grades(
+        self, student_id: int, exam_file: bool = False
+    ) -> list[dict[str, Any]]:
+        """Return every result in the progress (or exam) file, newest first."""
+        dossier = "geldendexamendossierresultaten" if exam_file else "geldendvoortgangsdossierresultaten"
+        return await self._async_get_items(
+            f"/rest/v1/{dossier}/leerling/{student_id}",
+            params=[
+                ("type", "Toetskolom"),
+                ("type", "DeeltoetsKolom"),
+                ("type", "Werkstukcijferkolom"),
+                ("type", "Advieskolom"),
+                ("additional", "vaknaam"),
+                ("additional", "naamalternatiefniveau"),
+                ("sort", "desc-geldendResultaatCijferInvoer"),
+            ],
+        )
+
+    async def async_get_averages(self, placement_uuid: str) -> dict[str, Any]:
+        """Return the subject averages for one placement."""
+        data, _headers = await self._async_get(
+            f"/rest/v1/vakkeuzes/plaatsing/{placement_uuid}/vakgemiddelden"
+        )
+        return data
+
+    async def async_get_registrations(self, student_id: int) -> dict[str, Any]:
+        """Return this school year's absences, late arrivals and the like."""
+        data, _headers = await self._async_get(
+            f"/rest/v1/leerlingen/{student_id}/registratieOverzicht",
+            params=[("periode", "SCHOOLJAAR")],
+        )
+        return data
+
+    async def async_get_measures(self, student_id: int) -> list[dict[str, Any]]:
+        """Return the active disciplinary measures."""
+        return await self._async_get_items(
+            f"/rest/v1/maatregeltoekenningen/actief/{student_id}"
+        )
+
+    async def async_get_assignments(self, student_id: int) -> list[dict[str, Any]]:
+        """Return study-guide items that have a hand-in window."""
+        return await self._async_get_items(
+            "/rest/v1/studiewijzeritemdagtoekenningen",
+            params=[
+                ("geenDifferentiatieOfGedifferentieerdVoorLeerling", str(student_id)),
+                ("studiewijzerItem.heeftInleverperiode", "true"),
+                ("additional", "leerlingen"),
+                ("additional", "lesgroep"),
+                ("additional", "leerlingenMetInleveringStatus"),
+            ],
+        )
+
+    async def async_get_announcements(self) -> list[dict[str, Any]]:
+        """Return Somtoday's nationwide notices (outages, maintenance)."""
+        return await self._async_get_items("/rest/v1/mededelingen")
+
+    async def async_get_conversations(self) -> list[dict[str, Any]]:
+        """Return the account's message threads.
+
+        Read-only. Somtoday marks a thread read only on an explicit
+        ``POST boodschappen/conversatie/{id}/markeerGelezen``, which this
+        client deliberately has no method for.
+        """
+        return await self._async_get_items(
+            "/rest/v1/boodschappen/conversaties",
+            params=[
+                ("additional", "verzondenDoorGebruiker"),
+                ("additional", "verzenderCorrespondent"),
+                ("additional", "actiefVoorGebruiker"),
+                ("alle", "true"),
+            ],
+        )
+
+    # ------------------------------------------------------------------
     # Private helpers
     # ------------------------------------------------------------------
 
@@ -236,8 +338,10 @@ class SomtodayApiClient:
         pagination lives in ``Content-Range``.
 
         Raises:
-            SomtodayInvalidAuth: The session is dead even after a refresh —
-                the caller should start a reauth flow.
+            SomtodaySessionRejected: The access token was refused even after a
+                refresh. Retryable.
+            SomtodayInvalidAuth: Somtoday has refused the session for longer
+                than the grace period — the caller should start a reauth flow.
             SomtodayApiError: Any non-success status, or an unparseable body.
             aiohttp.ClientError: On network-level failures. Not caught here;
                 ``DataUpdateCoordinator`` already wraps these.
@@ -252,8 +356,12 @@ class SomtodayApiClient:
             await self._async_force_refresh()
             status, data, headers = await self._async_request(path, params, start)
             if status == 401:
-                raise SomtodayInvalidAuth(
-                    "Somtoday rejected the access token after a refresh"
+                # Retryable for a while; only a lasting refusal asks for a
+                # new login (see SomtodayAuth.session_rejected).
+                raise self._auth.session_rejected(
+                    SomtodaySessionRejected(
+                        "Somtoday rejected the access token after a refresh"
+                    )
                 )
 
         if status == 403:

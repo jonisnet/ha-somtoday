@@ -4,7 +4,80 @@ All notable changes to the Somtoday integration are documented here.
 Development happens in beta releases (`X.Y.Z-beta.N`) between occasional real
 releases, where this file is consolidated into one summary per real version.
 
-## 0.1.10
+
+## 0.2.0-beta.5
+
+### Fixed
+- **Far fewer "sign in again" requests.** Home Assistant no longer asks for a new Somtoday login the moment Somtoday refuses the stored session. A refused refresh (HTTP 403), a fresh access token that is refused (401), and server errors (500) are now treated as temporary: the session is kept, the sensors keep their last data, and the integration simply tries again on the next update. Only when Somtoday keeps refusing the session for **6 hours**, or explicitly says the token is invalid (`invalid_grant`), does Home Assistant start the re-authentication flow.
+
+### Why
+In practice Somtoday's token endpoint has hiccups, mostly around midnight. Two nights in a row they cost a full re-login:
+- Somtoday answered a token refresh with a server error (500), and the next attempt with 403. The integration gave up after two 403s one second apart and asked for a new login.
+- Right after a Home Assistant restart, the first refresh with the stored, valid session got a 403, with the same result.
+
+The stored session itself was fine both times. It is valid for 60 days and moves forward with every hourly refresh. The integration was simply too quick to throw it away.
+
+Note: when Somtoday spends the old token but never delivers the new one (the 500 case), no client can recover that session. You will still be asked to sign in, but now only after 6 hours instead of within half an hour.
+
+## 0.2.0-beta.4
+
+### Fixed
+- The week sensors and the timetable-change event now carry a lesson's
+  `title` (and the week sensors `period_end`), so the Somtoday Card names a
+  block without a subject ("STARR") on the Today, Tomorrow and Week views too.
+
+## 0.2.0-beta.3
+
+### Fixed
+- A dual-level grade now also names its main level (e.g. "BB"): grades carry
+  the subject name where averages carry the abbreviation, so the match failed.
+
+## 0.2.0-beta.2
+
+### Added
+- **Both levels of a dual-level class.** Somtoday grades vmbo BB/KB classes on
+  two levels per test. Grades in `somtoday.get_records` gain `level`,
+  `alt_level`, `alt_result`, `alt_value` and `alt_sufficient`; subject averages
+  gain `alt_value` and `alt_sufficient`. The notification blueprint gets a
+  *level* choice for grades.
+- Lessons carry their `title`, so a block without a subject ("STARR") can be
+  named.
+
+### Fixed
+- **The other level's subject average was wrong**: it repeated the main
+  figure. It is now read from the right field.
+
+### Changed
+- **The notification blueprint has a section per kind**: who gets it, who sees
+  the content, which child, and which tab of the Somtoday Card opens when the
+  notification is tapped (`?somtoday_view=`, Somtoday Card 0.4.0-beta.2+).
+
+## 0.2.0-beta.1
+
+### Added
+- **Everything Somtoday shares with your account.** New sensors per student:
+  *Next holiday* (with countdown, the year's holidays and school-year
+  progress), *Class* (class, year, programme, location and full subject names),
+  *Assignments to hand in* (deadline and status) and *Somtoday notices*
+  (outages and maintenance). Homework items gain `time_indication` and `links`.
+- **Grades, subject averages, absences, measures and messages**, served by the
+  new `somtoday.get_records` service instead of entities, because every
+  signed-in user can read every entity. The integration options get one list of
+  users per category; nobody is on it until you add them. Automations and the
+  blueprint always get everything. Messages are never marked as read.
+- **`somtoday_new_record` events** for new grades (including a changed result),
+  absences, measures, messages, assignments and Somtoday notices. Confidential
+  kinds carry ids only. What was seen survives a restart, and the first poll
+  learns silently.
+- **A notification blueprint**, `somtoday_meldingen.yaml`: one automation for
+  every kind, with a section per kind to pick who gets it, who sees the content
+  (the grade, the start of a message) instead of only "something new came in",
+  and which child it is about.
+
+### Changed
+- The planner's user list in the options is now a list of Home Assistant users
+  to tick instead of a text field with user ids.
+
 
 ### Fixed
 - **Lesson material is recognised.** Somtoday marks some study-guide items as

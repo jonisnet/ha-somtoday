@@ -24,8 +24,19 @@ from .const import (
     DEFAULT_DAYS_AHEAD,
     DEFAULT_REFRESH_INTERVAL,
     DOMAIN,
+    EVENT_NEW_RECORD,
     EVENT_SCHEDULE_CHANGED,
     MIN_CARD_SCHEDULE_DAYS,
+)
+from .extras import (
+    CONFIDENTIAL_KINDS,
+    RECORD_KINDS,
+    AccountExtras,
+    SeenRecords,
+    StudentExtras,
+    async_fetch_account_extras,
+    async_fetch_student_extras,
+    record_ids,
 )
 from .models import (
     HomeworkItem,
@@ -47,6 +58,7 @@ class StudentData:
     student: Student
     lessons: list[Lesson] = field(default_factory=list)
     homework: list[HomeworkItem] = field(default_factory=list)
+    extras: StudentExtras = field(default_factory=StudentExtras)
 
 
 def refresh_interval(entry: ConfigEntry) -> timedelta:
@@ -222,6 +234,11 @@ class SomtodayCoordinator(DataUpdateCoordinator[dict[int, StudentData]]):
         # Keeps every detected change with the moment it came in. Optional so
         # the coordinator still works on its own; set up in async_setup_entry.
         self.change_log: SomtodayChangeLog | None = None
+        # Notices and messages belong to the account, not to one student.
+        self.account_extras: AccountExtras = AccountExtras()
+        # Which records were already seen, so only new ones are announced.
+        # Optional like the change log; set up in async_setup_entry.
+        self.seen: SeenRecords | None = None
 
     async def _async_update_data(self) -> dict[int, StudentData]:
         """Fetch students, schedule and homework for the configured window.
@@ -239,6 +256,7 @@ class SomtodayCoordinator(DataUpdateCoordinator[dict[int, StudentData]]):
                 window_start, window_end
             )
             result = await self._async_build(students, appointments, today)
+            await self._async_add_extras(result)
         except SomtodayInvalidAuth as err:
             # The only failure that means "these credentials are dead". Anything
             # else stays retryable so a Somtoday outage never forces a re-login.
@@ -250,6 +268,7 @@ class SomtodayCoordinator(DataUpdateCoordinator[dict[int, StudentData]]):
 
         self._persist_rotated_refresh_token()
         self._fire_schedule_changes(result, window_end)
+        self._fire_new_records(result)
         self.last_success_time = dt_util.utcnow()
         return result
 
@@ -302,6 +321,67 @@ class SomtodayCoordinator(DataUpdateCoordinator[dict[int, StudentData]]):
                 homework=homework,
             )
         return result
+
+    async def _async_add_extras(self, result: dict[int, StudentData]) -> None:
+        """Fetch holidays, grades, absences, messages and the rest.
+
+        Every category is optional (see extras.py); none of them can fail the
+        poll. The previous poll's data is handed in so slow-changing records
+        are reused instead of refetched every half hour.
+        """
+        now = dt_util.now()
+        previous = self.data or {}
+        for student_id, data in result.items():
+            before = previous.get(student_id)
+            data.extras = await async_fetch_student_extras(
+                self.client, student_id, before.extras if before else None, now
+            )
+        self.account_extras = await async_fetch_account_extras(self.client)
+
+    def _fire_new_records(self, result: dict[int, StudentData]) -> None:
+        """Announce records that were not there before.
+
+        One event per kind per student per poll. The event for a confidential
+        kind carries only ids: event data ends up in the recorder database,
+        and the content itself is served by the permission-checked
+        ``somtoday.get_records`` service instead.
+        """
+        if self.seen is None:
+            return
+        for kind in RECORD_KINDS:
+            account_wide = kind in ("message", "announcement")
+            targets = [None] if account_wide else list(result)
+            for student_id in targets:
+                extras = result[student_id].extras if student_id is not None else None
+                current = record_ids(kind, extras, self.account_extras)
+                if current is None:
+                    continue
+                scope = "account" if student_id is None else str(student_id)
+                new = self.seen.diff(scope, kind, current)
+                if not new:
+                    continue
+                payload: dict = {
+                    "kind": kind,
+                    "confidential": kind in CONFIDENTIAL_KINDS,
+                    "student_id": student_id,
+                    "device_id": self._device_id(student_id) if student_id else None,
+                    "count": len(new),
+                    "uids": sorted(new),
+                }
+                if kind == "assignment" and student_id is not None:
+                    payload["items"] = [
+                        item.as_dict(dt_util.now())
+                        for item in result[student_id].extras.assignments
+                        if item.uid in new
+                    ]
+                elif kind == "announcement":
+                    payload["items"] = [
+                        item.as_dict()
+                        for item in self.account_extras.announcements
+                        if item.uid in new
+                    ]
+                self.hass.bus.async_fire(EVENT_NEW_RECORD, payload)
+        self.seen.schedule_save()
 
     def _fire_schedule_changes(
         self, result: dict[int, StudentData], window_end: date

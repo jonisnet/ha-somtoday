@@ -15,8 +15,10 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import SomtodayApiClient
-from .auth import SomtodayAuth, SomtodayTokens
+from .auth import RejectionClock, SomtodayAuth, SomtodayTokens
 from .changelog import SomtodayChangeLog
+from .confidential import SERVICE_SCHEMA as GET_RECORDS_SCHEMA
+from .confidential import async_get_records
 from .const import (
     CONF_API_URL,
     CONF_REFRESH_TOKEN,
@@ -24,10 +26,12 @@ from .const import (
     DEFAULT_API_URL,
     DOMAIN,
     PLATFORMS,
+    SERVICE_GET_RECORDS,
     SERVICE_PLANNER_ADD,
     SERVICE_PLANNER_DELETE,
 )
 from .coordinator import SomtodayCoordinator
+from .extras import SeenRecords
 from .planner import SomtodayPlanner
 
 _LOGGER = logging.getLogger(__name__)
@@ -73,7 +77,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: SomtodayConfigEntry) -> 
         if data != entry.data:
             hass.config_entries.async_update_entry(entry, data=data)
 
-    auth = SomtodayAuth(session, tokens, on_tokens_updated=persist_tokens)
+    # Kept in hass.data so a Somtoday hiccup that spans several setup retries
+    # is still measured from its first refusal.
+    rejections: RejectionClock = (
+        hass.data.setdefault(DOMAIN, {})
+        .setdefault("session_rejections", {})
+        .setdefault(entry.entry_id, RejectionClock())
+    )
+    auth = SomtodayAuth(
+        session, tokens, on_tokens_updated=persist_tokens, rejections=rejections
+    )
     client = SomtodayApiClient(session, auth)
     coordinator = SomtodayCoordinator(hass, entry, client)
     planner = SomtodayPlanner(hass, entry.entry_id, dict(entry.options))
@@ -83,6 +96,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: SomtodayConfigEntry) -> 
     change_log = SomtodayChangeLog(hass, entry.entry_id)
     await change_log.async_load()
     coordinator.change_log = change_log
+    # Loaded before the first refresh for the same reason: otherwise every
+    # grade of the school year would look new after each restart.
+    seen = SeenRecords(hass, entry.entry_id)
+    await seen.async_load()
+    coordinator.seen = seen
 
     entry.runtime_data = SomtodayData(
         client=client, coordinator=coordinator, planner=planner, change_log=change_log
@@ -124,6 +142,18 @@ def _async_register_services(hass: HomeAssistant) -> None:
 
     async def delete(call: ServiceCall) -> None:
         await _planner_for(hass, call.data["config_entry_id"]).async_delete(call)
+
+    async def get_records(call: ServiceCall) -> dict[str, Any]:
+        return await async_get_records(hass, call)
+
+    if not hass.services.has_service(DOMAIN, SERVICE_GET_RECORDS):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_GET_RECORDS,
+            get_records,
+            schema=GET_RECORDS_SCHEMA,
+            supports_response=SupportsResponse.ONLY,
+        )
 
     if not hass.services.has_service(DOMAIN, SERVICE_PLANNER_ADD):
         hass.services.async_register(

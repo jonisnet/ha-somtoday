@@ -46,6 +46,7 @@ class LessonChange:
             "type": self.type.value,
             "subject": self.lesson.subject,
             "subject_short": self.lesson.subject_short,
+            "title": self.lesson.title,
             "teacher": self.lesson.teacher,
             "location": self.lesson.location,
             "start": self.lesson.start.isoformat(),

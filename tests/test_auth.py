@@ -13,9 +13,12 @@ import pytest
 from aioresponses import aioresponses
 
 from custom_components.somtoday.auth import (
+    SESSION_REJECTION_GRACE,
+    RejectionClock,
     SomtodayAuth,
     SomtodayAuthError,
     SomtodayInvalidAuth,
+    SomtodaySessionRejected,
     SomtodayTokens,
     _client_id_from_refresh_token,
     async_exchange_code,
@@ -198,13 +201,14 @@ async def test_invalid_grant_is_a_definitive_rejection(session):
             await async_exchange_code(session, "dead-code", "verifier")
 
 
-async def test_refresh_403_without_error_code_is_a_definitive_rejection(session):
-    """A repeated bare 403 rejects the session after one safe retry."""
+async def test_refresh_403_twice_is_a_retryable_rejection(session):
+    """A repeated bare 403 is reported, but not yet as a dead session."""
     with aioresponses() as mocked:
         mocked.post(TOKEN_URL, status=403)
         mocked.post(TOKEN_URL, status=403)
-        with pytest.raises(SomtodayInvalidAuth):
+        with pytest.raises(SomtodaySessionRejected) as excinfo:
             await async_refresh_tokens(session, "reset-refresh-token")
+    assert not isinstance(excinfo.value, SomtodayInvalidAuth)
 
 
 async def test_code_exchange_403_stays_retryable(session):
@@ -389,3 +393,53 @@ async def test_dead_refresh_token_raises_invalid_auth(session):
         mocked.post(TOKEN_URL, payload=payloads.INVALID_GRANT_RESPONSE, status=400)
         with pytest.raises(SomtodayInvalidAuth):
             await auth.async_get_access_token()
+
+
+async def test_refused_session_is_kept_within_the_grace_period(session):
+    """A Somtoday hiccup keeps the session; nothing asks for a new login yet."""
+    clock = RejectionClock()
+    auth = SomtodayAuth(session, _tokens(expires_in_seconds=-10), rejections=clock)
+    with aioresponses() as mocked:
+        mocked.post(TOKEN_URL, status=403)
+        mocked.post(TOKEN_URL, status=403)
+        with pytest.raises(SomtodaySessionRejected) as excinfo:
+            await auth.async_get_access_token()
+
+    assert not isinstance(excinfo.value, SomtodayInvalidAuth)
+    assert clock.since is not None
+    assert auth.tokens.refresh_token == "fictional-refresh-token"
+
+
+async def test_lasting_refusal_asks_for_a_new_login(session):
+    clock = RejectionClock(
+        since=datetime.now(timezone.utc) - SESSION_REJECTION_GRACE - timedelta(minutes=1)
+    )
+    auth = SomtodayAuth(session, _tokens(expires_in_seconds=-10), rejections=clock)
+    with aioresponses() as mocked:
+        mocked.post(TOKEN_URL, status=403)
+        mocked.post(TOKEN_URL, status=403)
+        with pytest.raises(SomtodayInvalidAuth):
+            await auth.async_get_access_token()
+
+
+async def test_successful_refresh_resets_the_rejection_clock(session):
+    clock = RejectionClock(since=datetime.now(timezone.utc) - timedelta(hours=1))
+    auth = SomtodayAuth(session, _tokens(expires_in_seconds=-10), rejections=clock)
+    with aioresponses() as mocked:
+        mocked.post(TOKEN_URL, payload=payloads.ROTATED_TOKEN_RESPONSE, status=200)
+        await auth.async_get_access_token()
+
+    assert clock.since is None
+
+
+async def test_server_error_on_refresh_stays_retryable(session):
+    """Somtoday's 500 on the token endpoint never asks for a new login."""
+    clock = RejectionClock()
+    auth = SomtodayAuth(session, _tokens(expires_in_seconds=-10), rejections=clock)
+    with aioresponses() as mocked:
+        mocked.post(TOKEN_URL, status=500, payload={"error": "server_error"})
+        with pytest.raises(SomtodayAuthError) as excinfo:
+            await auth.async_get_access_token()
+
+    assert not isinstance(excinfo.value, SomtodayInvalidAuth)
+    assert clock.since is None
