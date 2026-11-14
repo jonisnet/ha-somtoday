@@ -17,7 +17,7 @@ from typing import Any
 
 import aiohttp
 
-from .auth import SomtodayAuth, SomtodayInvalidAuth
+from .auth import SomtodayAuth, SomtodayInvalidAuth, SomtodaySessionRejected
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -338,8 +338,10 @@ class SomtodayApiClient:
         pagination lives in ``Content-Range``.
 
         Raises:
-            SomtodayInvalidAuth: The session is dead even after a refresh —
-                the caller should start a reauth flow.
+            SomtodaySessionRejected: The access token was refused even after a
+                refresh. Retryable.
+            SomtodayInvalidAuth: Somtoday has refused the session for longer
+                than the grace period — the caller should start a reauth flow.
             SomtodayApiError: Any non-success status, or an unparseable body.
             aiohttp.ClientError: On network-level failures. Not caught here;
                 ``DataUpdateCoordinator`` already wraps these.
@@ -354,8 +356,12 @@ class SomtodayApiClient:
             await self._async_force_refresh()
             status, data, headers = await self._async_request(path, params, start)
             if status == 401:
-                raise SomtodayInvalidAuth(
-                    "Somtoday rejected the access token after a refresh"
+                # Retryable for a while; only a lasting refusal asks for a
+                # new login (see SomtodayAuth.session_rejected).
+                raise self._auth.session_rejected(
+                    SomtodaySessionRejected(
+                        "Somtoday rejected the access token after a refresh"
+                    )
                 )
 
         if status == 403:

@@ -5,6 +5,20 @@ Development happens in beta releases (`X.Y.Z-beta.N`) between occasional real
 releases, where this file is consolidated into one summary per real version.
 
 
+## 0.2.0-beta.5
+
+### Fixed
+- **Far fewer "sign in again" requests.** Home Assistant no longer asks for a new Somtoday login the moment Somtoday refuses the stored session. A refused refresh (HTTP 403), a fresh access token that is refused (401), and server errors (500) are now treated as temporary: the session is kept, the sensors keep their last data, and the integration simply tries again on the next update. Only when Somtoday keeps refusing the session for **6 hours**, or explicitly says the token is invalid (`invalid_grant`), does Home Assistant start the re-authentication flow.
+
+### Why
+In practice Somtoday's token endpoint has hiccups, mostly around midnight. Two nights in a row they cost a full re-login:
+- Somtoday answered a token refresh with a server error (500), and the next attempt with 403. The integration gave up after two 403s one second apart and asked for a new login.
+- Right after a Home Assistant restart, the first refresh with the stored, valid session got a 403, with the same result.
+
+The stored session itself was fine both times. It is valid for 60 days and moves forward with every hourly refresh. The integration was simply too quick to throw it away.
+
+Note: when Somtoday spends the old token but never delivers the new one (the 500 case), no client can recover that session. You will still be asked to sign in, but now only after 6 hours instead of within half an hour.
+
 ## 0.2.0-beta.4
 
 ### Fixed

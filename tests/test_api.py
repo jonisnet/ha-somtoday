@@ -12,6 +12,7 @@ from custom_components.somtoday.api import SomtodayApiClient, SomtodayApiError
 from custom_components.somtoday.auth import (
     SomtodayAuth,
     SomtodayInvalidAuth,
+    SomtodaySessionRejected,
     SomtodayTokens,
 )
 from custom_components.somtoday.const import TOKEN_URL
@@ -207,14 +208,16 @@ async def test_401_triggers_one_refresh_and_a_retry(session):
     assert len(students) == 1
 
 
-async def test_401_after_a_refresh_is_a_definitive_failure(session):
+async def test_401_after_a_refresh_is_retryable_at_first(session):
+    """A refused fresh token may be a Somtoday hiccup: no reauth yet."""
     client = _client(session)
     with aioresponses() as mocked:
         mocked.get(STUDENTS_URL, status=401)
         mocked.post(TOKEN_URL, payload=payloads.ROTATED_TOKEN_RESPONSE, status=200)
         mocked.get(STUDENTS_URL, status=401)
-        with pytest.raises(SomtodayInvalidAuth):
+        with pytest.raises(SomtodaySessionRejected) as excinfo:
             await client.async_get_students()
+    assert not isinstance(excinfo.value, SomtodayInvalidAuth)
 
 
 async def test_403_is_retryable_not_a_reauth(session):

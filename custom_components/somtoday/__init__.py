@@ -15,7 +15,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import SomtodayApiClient
-from .auth import SomtodayAuth, SomtodayTokens
+from .auth import RejectionClock, SomtodayAuth, SomtodayTokens
 from .changelog import SomtodayChangeLog
 from .confidential import SERVICE_SCHEMA as GET_RECORDS_SCHEMA
 from .confidential import async_get_records
@@ -77,7 +77,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: SomtodayConfigEntry) -> 
         if data != entry.data:
             hass.config_entries.async_update_entry(entry, data=data)
 
-    auth = SomtodayAuth(session, tokens, on_tokens_updated=persist_tokens)
+    # Kept in hass.data so a Somtoday hiccup that spans several setup retries
+    # is still measured from its first refusal.
+    rejections: RejectionClock = (
+        hass.data.setdefault(DOMAIN, {})
+        .setdefault("session_rejections", {})
+        .setdefault(entry.entry_id, RejectionClock())
+    )
+    auth = SomtodayAuth(
+        session, tokens, on_tokens_updated=persist_tokens, rejections=rejections
+    )
     client = SomtodayApiClient(session, auth)
     coordinator = SomtodayCoordinator(hass, entry, client)
     planner = SomtodayPlanner(hass, entry.entry_id, dict(entry.options))
