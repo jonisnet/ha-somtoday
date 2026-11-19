@@ -99,6 +99,10 @@ class HomeworkItem:
     raw_kind: str | None = None
     done: bool = False
     student_ids: frozenset[int] = field(default_factory=frozenset)
+    # Somtoday's own estimate, free text such as "45 minuten".
+    time_indication: str | None = None
+    # External links the teacher attached (``externeMaterialen``).
+    links: tuple[dict[str, str], ...] = ()
 
     @property
     def is_test(self) -> bool:
@@ -276,6 +280,20 @@ def parse_lesson(payload: dict[str, Any]) -> Lesson | None:
     )
 
 
+def _external_links(item: dict[str, Any]) -> tuple[dict[str, str], ...]:
+    """Return the teacher's external links as ``{title, url}`` pairs."""
+    links: list[dict[str, str]] = []
+    for material in item.get("externeMaterialen") or []:
+        if not isinstance(material, dict):
+            continue
+        url = material.get("uri") or material.get("url") or material.get("link")
+        if isinstance(url, str) and url.startswith(("http://", "https://")):
+            links.append(
+                {"title": clean_text(material.get("omschrijving") or material.get("titel")) or url, "url": url}
+            )
+    return tuple(links)
+
+
 def _homework_done(payload: dict[str, Any], student_id: int | None) -> bool:
     """Return whether the student has ticked this item off.
 
@@ -336,4 +354,6 @@ def parse_homework(
         raw_kind=item.get("huiswerkType"),
         done=_homework_done(payload, student_id),
         student_ids=_student_ids(payload),
+        time_indication=clean_text(item.get("tijdsindicatie")),
+        links=_external_links(item),
     )

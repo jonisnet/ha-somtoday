@@ -69,9 +69,36 @@ class SomtodayInvalidAuth(SomtodayAuthError):
     """A definitive credential rejection — retrying will never help.
 
     Raised when Somtoday answers HTTP 400 with ``error=invalid_grant``, or when
-    its token endpoint repeatedly rejects a refresh-token grant with HTTP 403.
+    it has kept refusing the session for :data:`SESSION_REJECTION_GRACE`.
     This is the only failure that escalates to Home Assistant's reauth flow.
     """
+
+
+class SomtodaySessionRejected(SomtodayAuthError):
+    """Somtoday refused the stored session, but possibly only for a moment.
+
+    Somtoday's token endpoint and edge proxy have answered bare 403s (and a
+    500 followed by 403s) around midnight while the session was otherwise
+    fine. Treated as retryable; :class:`SomtodayAuth` only escalates it to
+    :class:`SomtodayInvalidAuth` once the refusals have lasted
+    :data:`SESSION_REJECTION_GRACE`.
+    """
+
+
+# How long Somtoday may keep refusing the session before Home Assistant asks
+# the user to sign in again. Short Somtoday hiccups must not cost a login.
+SESSION_REJECTION_GRACE = timedelta(hours=6)
+
+
+@dataclass
+class RejectionClock:
+    """When Somtoday started refusing the session, if it currently does.
+
+    Lives outside :class:`SomtodayAuth` so it survives the config entry's
+    setup retries, which each build a fresh auth object.
+    """
+
+    since: datetime | None = None
 
 
 class SomtodayTokenRequestError(SomtodayAuthError):
@@ -259,7 +286,7 @@ async def async_refresh_tokens(
             tokens = await _async_token_request(session, payload)
         except SomtodayTokenRequestError as retry_err:
             if retry_err.status == 403:
-                raise SomtodayInvalidAuth(
+                raise SomtodaySessionRejected(
                     "Somtoday repeatedly rejected the stored session"
                 ) from retry_err
             raise
@@ -360,12 +387,36 @@ class SomtodayAuth:
         session: aiohttp.ClientSession,
         tokens: SomtodayTokens,
         on_tokens_updated: Callable[[SomtodayTokens], None] | None = None,
+        rejections: RejectionClock | None = None,
     ) -> None:
         """Initialise with an already-obtained token set."""
         self._session = session
         self._tokens = tokens
         self._on_tokens_updated = on_tokens_updated
+        self._rejections = rejections if rejections is not None else RejectionClock()
         self._lock = asyncio.Lock()
+
+    def session_rejected(self, err: SomtodaySessionRejected) -> SomtodayAuthError:
+        """Return the error to raise for a refused session.
+
+        Within the grace period that is ``err`` itself (retryable); once
+        Somtoday has refused the session for longer, it becomes
+        :class:`SomtodayInvalidAuth` and Home Assistant asks for a new login.
+        """
+        now = datetime.now(timezone.utc)
+        if self._rejections.since is None:
+            self._rejections.since = now
+            _LOGGER.warning(
+                "Somtoday refused the stored session; keeping it and retrying. "
+                "A new sign-in is only requested if this lasts %s",
+                SESSION_REJECTION_GRACE,
+            )
+        if now - self._rejections.since >= SESSION_REJECTION_GRACE:
+            return SomtodayInvalidAuth(
+                f"Somtoday kept rejecting the stored session for "
+                f"{SESSION_REJECTION_GRACE}: {err}"
+            )
+        return err
 
     @property
     def tokens(self) -> SomtodayTokens:
@@ -389,9 +440,13 @@ class SomtodayAuth:
                 return self._tokens.access_token
 
             _LOGGER.debug("Access token expired, refreshing")
-            tokens = await async_refresh_tokens(
-                self._session, self._tokens.refresh_token
-            )
+            try:
+                tokens = await async_refresh_tokens(
+                    self._session, self._tokens.refresh_token
+                )
+            except SomtodaySessionRejected as err:
+                raise self.session_rejected(err) from err
+            self._rejections.since = None
             # Refresh responses can omit account metadata. The parser has to
             # supply a default URL for first-time logins, so detect that default
             # here and keep the entry's already-proven endpoint instead.

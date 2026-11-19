@@ -42,3 +42,34 @@ planner_delete:
       required: true
       selector:
         text:
+get_records:
+  fields:
+    config_entry_id:
+      selector:
+        config_entry:
+          integration: somtoday
+    student_id:
+      selector:
+        number:
+          min: 1
+          mode: box
+    categories:
+      selector:
+        select:
+          multiple: true
+          options:
+            - grades
+            - absences
+            - measures
+            - messages
+    uids:
+      selector:
+        text:
+          multiple: true
+    limit:
+      default: 200
+      selector:
+        number:
+          min: 1
+          max: 200
+          mode: box

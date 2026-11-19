@@ -72,6 +72,21 @@ def mock_api():
             return_value=[payloads.appointment()]
         )
         client.async_get_homework = AsyncMock(return_value=[payloads.homework()])
+        # School records beyond the timetable: empty unless a test fills them.
+        for name, value in {
+            "async_get_holidays": [],
+            "async_get_school_year": {},
+            "async_get_placements": [],
+            "async_get_subjects": [],
+            "async_get_assignments": [],
+            "async_get_grades": [],
+            "async_get_averages": {},
+            "async_get_registrations": {},
+            "async_get_measures": [],
+            "async_get_announcements": [],
+            "async_get_conversations": [],
+        }.items():
+            setattr(client, name, AsyncMock(return_value=value))
         # A real token set, not a mock attribute: diagnostics serialises this to
         # JSON, and a MagicMock standing in for `expires_at` would blow up there
         # rather than in the code under test.

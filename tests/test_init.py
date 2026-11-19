@@ -6,7 +6,10 @@ from homeassistant.config_entries import ConfigEntryState
 from homeassistant.helpers import device_registry as dr
 
 from custom_components.somtoday.api import SomtodayApiError
-from custom_components.somtoday.auth import SomtodayInvalidAuth
+from custom_components.somtoday.auth import (
+    SomtodayInvalidAuth,
+    SomtodaySessionRejected,
+)
 from custom_components.somtoday.const import DOMAIN
 
 from . import payloads
@@ -57,6 +60,20 @@ async def test_somtoday_outage_retries_instead_of_asking_for_a_login(
     hass, config_entry, mock_api
 ):
     mock_api.async_get_students.side_effect = SomtodayApiError(503)
+    config_entry.add_to_hass(hass)
+
+    await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert config_entry.state is ConfigEntryState.SETUP_RETRY
+    assert not hass.config_entries.flow.async_progress_by_handler(DOMAIN)
+
+
+async def test_refused_session_retries_instead_of_asking_for_a_login(
+    hass, config_entry, mock_api
+):
+    """A Somtoday hiccup right after a restart must not cost a new login."""
+    mock_api.async_get_students.side_effect = SomtodaySessionRejected("403")
     config_entry.add_to_hass(hass)
 
     await hass.config_entries.async_setup(config_entry.entry_id)

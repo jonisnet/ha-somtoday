@@ -4,6 +4,54 @@ All notable changes to the Somtoday integration are documented here.
 Development happens in beta releases (`X.Y.Z-beta.N`) between occasional real
 releases, where this file is consolidated into one summary per real version.
 
+
+## 0.2.0
+
+### Added
+- **Everything Somtoday shares with your account.** New sensors per student:
+  *Next holiday* (with countdown, the year's holidays and school-year
+  progress), *Class* (class, year, programme, location and full subject names),
+  *Assignments to hand in* (deadline and status) and *Somtoday notices*
+  (outages and maintenance). Homework items gain `time_indication` and `links`.
+- **Grades, subject averages, absences, measures and messages**, served by the
+  new `somtoday.get_records` service instead of entities, because every
+  signed-in user can read every entity. The integration options get one list of
+  users per category; nobody is on it until you add them. Automations and the
+  blueprint always get everything. Messages are never marked as read.
+- **Both levels of a dual-level class.** Somtoday grades vmbo BB/KB classes on
+  two levels per test. Grades gain `level`, `alt_level`, `alt_result`,
+  `alt_value` and `alt_sufficient`; subject averages gain `alt_value` and
+  `alt_sufficient`. The other level's average is read from its own field.
+- **`somtoday_new_record` events** for new grades (including a changed result),
+  absences, measures, messages, assignments and Somtoday notices. Confidential
+  kinds carry ids only. What was seen survives a restart, and the first poll
+  learns silently.
+- **A notification blueprint**, `somtoday_meldingen.yaml`: one automation for
+  every kind, with a section per kind to pick who gets it, who sees the content
+  (the grade, the start of a message) instead of only "something new came in",
+  which child it is about, which level of a dual-level grade to show, and which
+  tab of the Somtoday Card opens when the notification is tapped
+  (`?somtoday_view=`, Somtoday Card 0.4.0+).
+- Lessons carry their `title`, also in the week sensors and the
+  timetable-change event, so a block without a subject ("STARR") can be named.
+
+### Changed
+- The planner's user list in the options is now a list of Home Assistant users
+  to tick instead of a text field with user ids.
+
+### Fixed
+- **Far fewer "sign in again" requests.** Home Assistant no longer asks for a
+  new Somtoday login the moment Somtoday refuses the stored session. A refused
+  refresh (HTTP 403), a fresh access token that is refused (401) and server
+  errors (500) are treated as temporary: the session is kept, the sensors keep
+  their last data, and the integration tries again on the next update. Only
+  when Somtoday keeps refusing the session for **6 hours**, or explicitly says
+  the token is invalid (`invalid_grant`), does Home Assistant start the
+  re-authentication flow. When Somtoday spends the old token but never
+  delivers the new one (the 500 case), no client can recover that session; you
+  are then still asked to sign in, but after 6 hours instead of within half an
+  hour.
+
 ## 0.1.10
 
 ### Fixed

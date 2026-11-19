@@ -54,11 +54,21 @@
         "title": "Somtoday options",
         "data": {
           "refresh_interval": "Refresh interval",
-          "days_ahead": "Days of schedule to fetch"
+          "days_ahead": "Days of schedule to fetch",
+          "planner_allowed_users": "Who may edit the planner",
+          "grades_allowed_users": "Who may see grades",
+          "absences_allowed_users": "Who may see absences",
+          "measures_allowed_users": "Who may see measures",
+          "messages_allowed_users": "Who may see messages"
         },
         "data_description": {
           "refresh_interval": "How often to check Somtoday for changes.",
-          "days_ahead": "How far ahead the schedule is loaded. The calendar can still show any period — it just fetches those on demand."
+          "days_ahead": "How far ahead the schedule is loaded. The calendar can still show any period — it just fetches those on demand.",
+          "planner_allowed_users": "Administrators can always edit.",
+          "grades_allowed_users": "Grades and averages are never stored in an entity, because every signed-in user can read entities. Only the users ticked here get them from the Somtoday card. Nobody is ticked by default, administrators included.",
+          "absences_allowed_users": "Absences, late arrivals and similar registrations. Same rules as grades.",
+          "measures_allowed_users": "Disciplinary measures such as detention. Same rules as grades.",
+          "messages_allowed_users": "Messages from school, including their contents. Somtoday is never told a message was read. Same rules as grades."
         }
       }
     }
@@ -141,6 +151,46 @@
       },
       "last_update": {
         "name": "Last update"
+      },
+      "next_holiday": {
+        "name": "Next holiday"
+      },
+      "school_class": {
+        "name": "Class"
+      },
+      "assignments": {
+        "name": "Assignments to hand in"
+      },
+      "announcements": {
+        "name": "Somtoday notices"
+      }
+    }
+  },
+  "services": {
+    "get_records": {
+      "name": "Get confidential records",
+      "description": "Return grades, absences, measures and messages, limited to what the calling user is allowed to see in the integration options. Automations and scripts started by Home Assistant itself get everything.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Somtoday account",
+          "description": "Leave empty for every account."
+        },
+        "student_id": {
+          "name": "Student",
+          "description": "Somtoday student id. Leave empty for every student."
+        },
+        "categories": {
+          "name": "Categories",
+          "description": "Which categories to return. Leave empty for all."
+        },
+        "uids": {
+          "name": "Record ids",
+          "description": "Only these records, for example the uids from a somtoday_new_record event."
+        },
+        "limit": {
+          "name": "Maximum per category",
+          "description": "At most this many records per category."
+        }
       }
     }
   }

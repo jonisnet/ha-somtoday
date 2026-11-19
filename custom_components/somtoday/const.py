@@ -14,6 +14,12 @@ ATTRIBUTION = "Data provided by Somtoday"
 # together — a whole day being dropped is one piece of news, not seven.
 EVENT_SCHEDULE_CHANGED = "somtoday_schedule_changed"
 
+# Fired when a poll finds records that were not there before: a grade, an
+# absence, a measure, a message, an assignment or a nationwide notice. For the
+# confidential kinds the event carries ids only; the content comes from the
+# permission-checked ``get_records`` service.
+EVENT_NEW_RECORD = "somtoday_new_record"
+
 # --------------------------------------------------------------------------
 # OAuth2 / PKCE
 # --------------------------------------------------------------------------
@@ -83,6 +89,14 @@ MIN_CARD_SCHEDULE_DAYS = 63
 
 SERVICE_PLANNER_ADD = "planner_add"
 SERVICE_PLANNER_DELETE = "planner_delete"
+SERVICE_GET_RECORDS = "get_records"
+
+# Confidential categories, each with its own list of Home Assistant users who
+# may see it. Nobody is on a list until the owner puts them there.
+CONFIDENTIAL_CATEGORIES = ("grades", "absences", "measures", "messages")
+CONF_ALLOWED_USERS = {
+    category: f"{category}_allowed_users" for category in CONFIDENTIAL_CATEGORIES
+}
 
 # Floor for the look-back. The window actually reaches back to the Monday of
 # the current week (see coordinator.window_start); this is only what Monday
