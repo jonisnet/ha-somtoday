@@ -548,13 +548,11 @@ for when it last succeeded. Home Assistant retries automatically; a genuinely
 dead session raises a re-authentication prompt instead.
 
 **Home Assistant keeps asking me to sign in again**
-That happens when Somtoday refuses the stored refresh token. Changing the
-Somtoday password does this, and so does signing in on many devices if
-Somtoday decides to invalidate older sessions. Somtoday also sometimes refuses
-a refresh for a while (HTTP 403 without an error code); version 0.1.x treats
-that as a dead session and asks you to sign in straight away. From version 0.2.0 it
-retries in the background instead and only asks after six hours of
-continuous refusal.
+That only happens when Somtoday keeps refusing the stored refresh token.
+A short refusal (HTTP 403 without an error code, which Somtoday sometimes
+sends for a while) is retried in the background. You are only asked to sign
+in again after six hours of continuous refusal, or straight away when
+Somtoday reports the token as invalid. Changing the Somtoday password does the latter.
 
 **Something is missing or wrong in the schedule**
 Enable debug logging (**Settings → Devices & services → Somtoday → ⋮ → Enable
