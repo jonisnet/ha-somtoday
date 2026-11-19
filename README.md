@@ -200,7 +200,7 @@ your Somtoday password.
 
 - **Refresh interval** — 15 minutes to 4 hours, default 30. A timetable rarely
   changes faster than that.
-- **Days of schedule to fetch** — 1 to 8 weeks, default 8. The integration
+- **Days of schedule to fetch** — 1, 2, 3, 4 or 8 weeks, default 8. The integration
   always keeps eight weeks available for compatible dashboard cards. This is
   what the sensors and the cached calendar cover; the calendar can still show
   any period, it just fetches those on demand.
@@ -337,8 +337,8 @@ the one change an active-week view could otherwise hide completely.
 **How much to trust it depends on how many weeks were fetched.** A slot must
 appear in at least two distinct weeks before it counts as normal, and
 `weeks_observed` is published so you can see what the derivation had to work
-with. Four weeks is the default for exactly this reason — at two weeks a
-recurring slot is barely distinguishable from a coincidence, at four it is a
+with. That is why the default is eight weeks — at two weeks a recurring
+slot is barely distinguishable from a coincidence, from four weeks on it is a
 pattern. Lower it only if you do not use the normal-week view. That is also why the base-week sensor is **disabled by
 default** — it should be an explicit choice, not something that quietly presents
 a one-week guess as the timetable.
@@ -488,8 +488,6 @@ would need.
 - **No push.** Somtoday has no webhook for this; polling is the only option.
 - **The lesson lists in attributes are capped at 30 items** so they stay under
   Home Assistant's state-attribute size limit.
-- **No brand icon yet**, so the integration shows a generic placeholder in the
-  integrations list.
 
 ## Alternatives
 
@@ -550,9 +548,13 @@ for when it last succeeded. Home Assistant retries automatically; a genuinely
 dead session raises a re-authentication prompt instead.
 
 **Home Assistant keeps asking me to sign in again**
-That only happens when Somtoday rejects the stored refresh token outright.
-Changing the Somtoday password does this, and so does signing in on many devices
-if Somtoday decides to invalidate older sessions.
+That happens when Somtoday refuses the stored refresh token. Changing the
+Somtoday password does this, and so does signing in on many devices if
+Somtoday decides to invalidate older sessions. Somtoday also sometimes refuses
+a refresh for a while (HTTP 403 without an error code); version 0.1.x treats
+that as a dead session and asks you to sign in straight away. Version 0.2.0
+(in beta) retries in the background instead and only asks after six hours of
+continuous refusal.
 
 **Something is missing or wrong in the schedule**
 Enable debug logging (**Settings → Devices & services → Somtoday → ⋮ → Enable
