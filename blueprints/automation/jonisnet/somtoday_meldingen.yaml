@@ -87,7 +87,7 @@ blueprint:
         cijfer_tab:
           name: Welke tab van de Somtoday-kaart gaat open?
           description: >-
-            Werkt met Somtoday Card 0.4.0-beta.2 of nieuwer, op de pagina die
+            Werkt met Somtoday Card 0.4.0 of nieuwer, op de pagina die
             je bij Algemeen kiest.
           default: grades
           selector: &tabs
@@ -145,7 +145,7 @@ blueprint:
         afwezig_tab:
           name: Welke tab van de Somtoday-kaart gaat open?
           description: >-
-            Werkt met Somtoday Card 0.4.0-beta.2 of nieuwer, op de pagina die
+            Werkt met Somtoday Card 0.4.0 of nieuwer, op de pagina die
             je bij Algemeen kiest.
           default: absences
           selector: *tabs
@@ -172,7 +172,7 @@ blueprint:
         maatregel_tab:
           name: Welke tab van de Somtoday-kaart gaat open?
           description: >-
-            Werkt met Somtoday Card 0.4.0-beta.2 of nieuwer, op de pagina die
+            Werkt met Somtoday Card 0.4.0 of nieuwer, op de pagina die
             je bij Algemeen kiest.
           default: absences
           selector: *tabs
@@ -201,7 +201,7 @@ blueprint:
         bericht_tab:
           name: Welke tab van de Somtoday-kaart gaat open?
           description: >-
-            Werkt met Somtoday Card 0.4.0-beta.2 of nieuwer, op de pagina die
+            Werkt met Somtoday Card 0.4.0 of nieuwer, op de pagina die
             je bij Algemeen kiest.
           default: messages
           selector: *tabs
@@ -221,7 +221,7 @@ blueprint:
         opdracht_tab:
           name: Welke tab van de Somtoday-kaart gaat open?
           description: >-
-            Werkt met Somtoday Card 0.4.0-beta.2 of nieuwer, op de pagina die
+            Werkt met Somtoday Card 0.4.0 of nieuwer, op de pagina die
             je bij Algemeen kiest.
           default: assignments
           selector: *tabs
@@ -244,7 +244,7 @@ blueprint:
         storing_tab:
           name: Welke tab van de Somtoday-kaart gaat open?
           description: >-
-            Werkt met Somtoday Card 0.4.0-beta.2 of nieuwer, op de pagina die
+            Werkt met Somtoday Card 0.4.0 of nieuwer, op de pagina die
             je bij Algemeen kiest.
           default: none
           selector: *tabs

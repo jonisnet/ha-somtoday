@@ -282,7 +282,7 @@ its own section where you pick:
 - **which child** it is about (empty = all),
 - **which tab of the Somtoday Card** opens when the notification is tapped —
   grades for a new grade, messages for a message (needs Somtoday Card
-  0.4.0-beta.2 or newer).
+  0.4.0 or newer).
 
 Under the hood every poll compares against what it saw before and fires a
 `somtoday_new_record` event per kind. For grades, absences, measures and
@@ -552,8 +552,8 @@ That happens when Somtoday refuses the stored refresh token. Changing the
 Somtoday password does this, and so does signing in on many devices if
 Somtoday decides to invalidate older sessions. Somtoday also sometimes refuses
 a refresh for a while (HTTP 403 without an error code); version 0.1.x treats
-that as a dead session and asks you to sign in straight away. Version 0.2.0
-(in beta) retries in the background instead and only asks after six hours of
+that as a dead session and asks you to sign in straight away. From version 0.2.0 it
+retries in the background instead and only asks after six hours of
 continuous refusal.
 
 **Something is missing or wrong in the schedule**
