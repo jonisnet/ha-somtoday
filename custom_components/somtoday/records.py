@@ -11,6 +11,7 @@ account had none. Every parser tolerates missing fields.
 """
 from __future__ import annotations
 
+import zlib
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Any
@@ -578,6 +579,9 @@ class Message:
     attachments: int
     message_count: int
     latest_uid: str | None = None
+    # "inbox" (Postvak IN) or "sent" (Verzonden items).
+    folder: str = "inbox"
+    recipients: tuple[str, ...] = ()
 
     def as_dict(self) -> dict[str, Any]:
         """Return the service-response shape."""
@@ -593,38 +597,76 @@ class Message:
             "attachments": self.attachments,
             "message_count": self.message_count,
             "latest_uid": self.latest_uid,
+            "folder": self.folder,
+            "recipients": list(self.recipients),
         }
 
 
+def _message_id(payload: dict[str, Any]) -> str | None:
+    """Return a message id from its links.
+
+    Conversation messages (``boodschappen``) do not carry a ``self`` link: live
+    responses only have ``{"rel": "koppeling", "type": "...", "id": <int>}``.
+    The ``self`` link is still preferred when present.
+    """
+    found = _self_link_id(payload)
+    if found is not None:
+        return str(found)
+    for link in payload.get("links") or []:
+        if isinstance(link, dict) and link.get("id") not in (None, ""):
+            return str(link.get("id"))
+    return None
+
+
 def parse_conversation(payload: dict[str, Any]) -> Message | None:
-    """Build a :class:`Message` from a received conversation; skip sent/deleted ones."""
+    """Build a :class:`Message` from a conversation, received or sent.
+
+    Sent conversations are kept and marked ``folder="sent"`` so a card can
+    show both *Postvak IN* and *Verzonden items*. Drafts and threads that are
+    no longer active for the user are still skipped.
+    """
     messages = [m for m in payload.get("boodschappen") or [] if isinstance(m, dict)]
     if not messages:
         return None
-    received = [
+    active = [
         m
         for m in messages
-        if not (m.get("additionalObjects") or {}).get("verzondenDoorGebruiker")
-        and (m.get("additionalObjects") or {}).get("actiefVoorGebruiker") is not False
+        if (m.get("additionalObjects") or {}).get("actiefVoorGebruiker") is not False
         and not m.get("draft")
     ]
-    if not received:
+    if not active:
         return None
-    newest = received[0]
-    uid = _self_link_id(messages[-1]) or _self_link_id(newest)
+    newest = max(
+        active,
+        key=lambda m: parse_local_datetime(m.get("verzendDatum"))
+        or datetime.min.replace(tzinfo=SOMTODAY_TZ),
+    )
+    extra = newest.get("additionalObjects") or {}
+    sent_by_me = bool(extra.get("verzondenDoorGebruiker"))
+    uid = _message_id(messages[-1]) or _message_id(newest)
     if uid is None:
-        return None
-    sender = (newest.get("additionalObjects") or {}).get("verzenderCorrespondent") or {}
+        uid = "c" + str(
+            zlib.crc32(f"{newest.get('verzendDatum')}|{newest.get('onderwerp')}".encode())
+        )
+    sender = extra.get("verzenderCorrespondent") or {}
+    wrapper = extra.get("ontvangerCorrespondenten") or {}
+    recipients = tuple(
+        name
+        for item in (wrapper.get("items") or [])[:5]
+        if isinstance(item, dict) and (name := clean_text(item.get("naam")))
+    )
     return Message(
-        uid=str(uid),
+        uid=uid,
         subject=clean_text(newest.get("onderwerp")),
         body=clean_text(newest.get("inhoud")),
-        sender=clean_text(sender.get("naam")) or "Automatisch bericht",
+        sender=None if sent_by_me else clean_text(sender.get("naam")) or "Automatisch bericht",
         sent=parse_local_datetime(newest.get("verzendDatum")),
-        unread=bool(payload.get("datumOudsteOngelezenBoodschap")),
+        unread=(not sent_by_me) and bool(payload.get("datumOudsteOngelezenBoodschap")),
         priority=newest.get("prioriteit"),
         kind=newest.get("notificatieType"),
         attachments=len(newest.get("bijlages") or []),
         message_count=len(messages),
-        latest_uid=str(_self_link_id(newest) or uid),
+        latest_uid=_message_id(newest) or uid,
+        folder="sent" if sent_by_me else "inbox",
+        recipients=recipients,
     )

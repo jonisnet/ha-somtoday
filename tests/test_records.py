@@ -224,9 +224,34 @@ def test_parse_conversation_received_and_unread():
     assert message.attachments == 1
 
 
-def test_sent_and_deleted_conversations_are_skipped():
-    assert parse_conversation({"boodschappen": [_message(1, sent_by_user=True)]}) is None
+def test_deleted_conversations_are_skipped():
     assert parse_conversation({"boodschappen": [_message(1, active=False)]}) is None
+
+
+def test_sent_conversation_is_kept_in_sent_folder():
+    convo = {"boodschappen": [_message(1, sent_by_user=True)]}
+    convo["boodschappen"][0]["additionalObjects"]["ontvangerCorrespondenten"] = {
+        "items": [{"naam": "Mentor"}]
+    }
+    message = parse_conversation(convo)
+    assert message.folder == "sent"
+    assert message.recipients == ("Mentor",)
+    assert message.unread is False
+    assert message.as_dict()["folder"] == "sent"
+
+
+def test_received_conversation_is_in_inbox():
+    message = parse_conversation({"boodschappen": [_message(1)]})
+    assert message.folder == "inbox"
+
+
+def test_message_with_only_a_koppeling_link_is_kept():
+    """Live boodschappen carry no ``self`` link, only ``rel: koppeling``."""
+    raw = _message(1)
+    raw["links"] = [{"id": 42, "rel": "koppeling", "type": "boodschappen.RBoodschap"}]
+    message = parse_conversation({"boodschappen": [raw]})
+    assert message is not None
+    assert message.uid == "42"
 
 
 def _client(**overrides):
